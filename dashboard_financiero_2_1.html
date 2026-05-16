@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard Financiero — Maxi</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=JetBrains+Mono:wght@400;500;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0e10;
+    --bg-2: #14171a;
+    --bg-3: #1c2025;
+    --line: #262b32;
+    --line-2: #323942;
+    --txt: #e9ecef;
+    --txt-2: #9aa3ad;
+    --txt-3: #5c6470;
+    --acc: #d4ff3a;
+    --acc-2: #7dd3a3;
+    --warn: #ffb547;
+    --bad: #ff5d5d;
+    --ok: #4ade80;
+    --usd: #6cb6ff;
+    --shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 2px rgba(0,0,0,.4);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--txt); font-family: 'Inter Tight', -apple-system, sans-serif; font-size: 14px; }
+  body { background-image: radial-gradient(circle at 0% 0%, rgba(212,255,58,0.05), transparent 50%), radial-gradient(circle at 100% 100%, rgba(108,182,255,0.04), transparent 50%); min-height: 100vh; }
+  .num { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' on, 'lnum' on; }
+  .display { font-family: 'Fraunces', serif; font-weight: 600; letter-spacing: -0.02em; }
+  h1, h2, h3 { margin: 0; }
+  button, input, select, textarea { font-family: inherit; font-size: 14px; }
+
+  /* Layout */
+  .app { max-width: 1480px; margin: 0 auto; padding: 24px; }
+  header.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: baseline; gap: 14px; }
+  .brand h1 { font-family: 'Fraunces', serif; font-weight: 800; font-size: 28px; letter-spacing: -0.03em; }
+  .brand .sub { color: var(--txt-2); font-size: 13px; font-style: italic; }
+
+  .nav-tabs { display: flex; gap: 4px; background: var(--bg-2); padding: 4px; border-radius: 10px; border: 1px solid var(--line); }
+  .nav-tabs button { background: transparent; border: 0; color: var(--txt-2); padding: 8px 14px; border-radius: 7px; cursor: pointer; transition: all .15s; font-weight: 500; }
+  .nav-tabs button.active { background: var(--acc); color: #0c0e10; }
+  .nav-tabs button:hover:not(.active) { color: var(--txt); background: var(--bg-3); }
+
+  /* KPI Grid */
+  .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 22px; }
+  .kpi { background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden; }
+  .kpi .lbl { font-size: 11px; color: var(--txt-3); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .kpi .val { font-size: 28px; font-weight: 700; margin-top: 6px; letter-spacing: -0.02em; }
+  .kpi .hint { font-size: 12px; color: var(--txt-2); margin-top: 4px; }
+  .kpi.accent { background: linear-gradient(135deg, #d4ff3a 0%, #a8e016 100%); color: #0c0e10; border-color: transparent; }
+  .kpi.accent .lbl { color: #2a3300; }
+  .kpi.accent .hint { color: #2a3300; opacity: 0.75; }
+  .kpi.bad { border-color: var(--bad); }
+  .kpi.bad .val { color: var(--bad); }
+  .kpi.warn { border-color: var(--warn); }
+  .kpi.warn .val { color: var(--warn); }
+  .kpi.ok .val { color: var(--ok); }
+
+  /* Cards */
+  .card { background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; padding: 22px; margin-bottom: 18px; }
+  .card h3 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 18px; letter-spacing: -0.01em; margin-bottom: 4px; }
+  .card .desc { color: var(--txt-2); font-size: 12px; margin-bottom: 18px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; }
+
+  /* Chart wrap */
+  .chart-wrap { position: relative; height: 280px; }
+  .chart-wrap.tall { height: 340px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 8px; color: var(--txt-3); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; border-bottom: 1px solid var(--line); }
+  td { padding: 11px 8px; border-bottom: 1px solid var(--line); }
+  tr:hover td { background: var(--bg-3); }
+  td.num, th.num { text-align: right; }
+  td .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge.real { background: rgba(74,222,128,0.15); color: var(--ok); }
+  .badge.proy { background: rgba(255,181,71,0.15); color: var(--warn); }
+  .badge.tarj { background: rgba(108,182,255,0.15); color: var(--usd); }
+  .badge.cat { background: var(--bg-3); color: var(--txt-2); border: 1px solid var(--line); }
+
+  /* Forms */
+  .form-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; align-items: end; }
+  .form-row.r2 { grid-template-columns: repeat(4, 1fr); }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 10px; color: var(--txt-3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .field input, .field select, .field textarea { background: var(--bg-3); border: 1px solid var(--line); color: var(--txt); padding: 9px 11px; border-radius: 8px; outline: none; transition: border .15s; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--acc); }
+  .btn { background: var(--acc); color: #0c0e10; border: 0; padding: 9px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: transform .1s; }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.ghost { background: var(--bg-3); color: var(--txt); border: 1px solid var(--line); }
+  .btn.danger { background: rgba(255,93,93,0.12); color: var(--bad); border: 1px solid rgba(255,93,93,0.3); }
+  .btn.sm { padding: 5px 10px; font-size: 12px; }
+
+  /* Semaforo */
+  .traffic { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .traffic.ok { background: rgba(74,222,128,0.12); color: var(--ok); }
+  .traffic.warn { background: rgba(255,181,71,0.15); color: var(--warn); }
+  .traffic.bad { background: rgba(255,93,93,0.12); color: var(--bad); }
+  .traffic .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+  /* Progress bar */
+  .progress { height: 6px; background: var(--bg-3); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+  .progress > div { height: 100%; transition: width .3s; }
+
+  /* Mes selector */
+  .mes-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .mes-pills button { background: var(--bg-3); border: 1px solid var(--line); color: var(--txt-2); padding: 6px 14px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 500; }
+  .mes-pills button.active { background: var(--txt); color: var(--bg); border-color: var(--txt); }
+
+  /* Tabs (subnav) */
+  .subtabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
+  .subtabs button { background: none; border: 0; padding: 12px 20px; color: var(--txt-2); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 500; }
+  .subtabs button.active { color: var(--acc); border-bottom-color: var(--acc); }
+
+  /* utility */
+  .row-flex { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .spacer { flex: 1; }
+  .empty { text-align: center; color: var(--txt-3); padding: 30px; font-style: italic; }
+  .hidden { display: none !important; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  @media (max-width: 980px) {
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .form-row, .form-row.r2 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 640px) {
+    .app { padding: 14px; }
+    .nav-tabs { flex-wrap: wrap; }
+    .kpi .val { font-size: 22px; }
+    header.topbar { flex-direction: column; gap: 12px; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <h1>Tablero Financiero</h1>
+      <span class="sub">120 días — escenario tarjeta &lt; 1M</span>
+    </div>
+    <div class="nav-tabs" id="navTabs">
+      <button data-page="dashboard" class="active">Tablero</button>
+      <button data-page="ingresos">Ingresos</button>
+      <button data-page="gastos">Gastos</button>
+      <button data-page="tarjeta">Tarjeta</button>
+      <button data-page="inversiones">Inversiones</button>
+      <button data-page="proyeccion">Proyección</button>
+      <button data-page="config">Config</button>
+    </div>
+  </header>
+
+  <!-- ============ PAGE: DASHBOARD ============ -->
+  <section id="page-dashboard" class="page active">
+    <div class="row-flex" style="margin-bottom: 18px;">
+      <div class="mes-pills" id="mesPills"></div>
+      <div class="spacer"></div>
+      <button class="btn ghost sm" onclick="exportData()">⬇ Backup JSON</button>
+      <label class="btn ghost sm" style="cursor:pointer;">
+        ⬆ Importar
+        <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(event)">
+      </label>
+    </div>
+
+    <div class="kpis" id="kpiGrid"></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Caja proyectada — escenario 120 días</h3>
+        <div class="desc">Real + proyectado, día por día. Saldo inicial editable en Config.</div>
+        <div class="chart-wrap tall"><canvas id="chCaja"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Consumo tarjeta vs objetivo</h3>
+        <div class="desc">Meta: $1.000.000 / mes. Cuando supera 85% pasa a amarillo.</div>
+        <div class="chart-wrap tall"><canvas id="chTarjeta"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3>Semáforo por categoría — mes seleccionado</h3>
+        <div class="desc">Real + proyectado vs objetivo configurado.</div>
+        <table id="tblCategorias"></table>
+      </div>
+      <div class="card">
+        <h3>Distribución de gastos del mes</h3>
+        <div class="chart-wrap"><canvas id="chDonut"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Ahorro proyectado</h3>
+        <div class="desc">3 meses y proyección a fin de año (basada en ahorro promedio reciente).</div>
+        <div class="chart-wrap"><canvas id="chAhorro"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Inversiones — composición</h3>
+        <div class="desc">Aportes netos (aportes − desarmes). USD valuados al TC config.</div>
+        <div class="chart-wrap"><canvas id="chInv"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE: INGRESOS ============ -->
+  <section id="page-ingresos" class="page">
+    <div class="card">
+      <h3>Cargar ingreso</h3>
+      <div class="desc">Cobros reales o programados. Cambiá a "Real" cuando impacte la cuenta.</div>
+      <div class="form-row">
+        <div class="field"><label>Fecha</label><input type="date" id="ing-fecha"></div>
+        <div class="field"><label>Origen</label><input id="ing-origen" placeholder="Lekigos, Ribs, etc."></div>
+        <div class="field"><label>Monto ARS</label><input type="number" id="ing-monto" placeholder="0"></div>
+        <div class="field"><label>Estado</label><select id="ing-estado"><option>Real</option><option>Proyectado</option></select></div>
+        <div class="field"><label>Notas</label><input id="ing-notas"></div>
+        <div class="field"><button class="btn" onclick="addIngreso()">Agregar</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Historial de ingresos</h3>
+      <table id="tblIngresos"></table>
+    </div>
+  </section>
+
+  <!-- ============ PAGE: GASTOS ============ -->
+  <section id="page-gastos" class="page">
+    <div class="card">
+      <h3>Cargar gasto directo</h3>
+      <div class="desc">Débito, efectivo, transferencias. Los consumos con tarjeta van en la pestaña Tarjeta.</div>
+      <div class="form-row">
+        <div class="field"><label>Fecha</label><input type="date" id="gas-fecha"></div>
+        <div class="field"><label>Categoría</label><select id="gas-categoria"></select></div>
+        <div class="field"><label>Descripción</label><input id="gas-descripcion"></div>
+        <div class="field"><label>Monto</label><input type="number" id="gas-monto"></div>
+        <div class="field"><label>Medio</label><select id="gas-medio"><option>Débito</option><option>Cash</option><option>Transferencia</option></select></div>
+        <div class="field"><label>Tipo</label><select id="gas-tipo"><option>Personal</option><option>Negocio</option></select></div>
+      </div>
+      <div class="form-row r2" style="margin-top: 10px;">
+        <div class="field"><label>Estado</label><select id="gas-estado"><option>Real</option><option>Proyectado</option></select></div>
+        <div class="field"><label>Notas</label><input id="gas-notas"></div>
+        <div class="field"><button id="gas-btn-cancel" class="btn ghost" onclick="cancelEditGasto()" style="display:none;">Cancelar</button></div>
+        <div class="field"><button id="gas-btn-save" class="btn" onclick="addGasto()">Agregar gasto</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row-flex" style="margin-bottom: 14px;">
+        <h3 style="margin: 0;">Gastos directos</h3>
+        <div class="spacer"></div>
+        <select id="gas-filtro-mes" onchange="renderGastos()" style="background:var(--bg-3);border:1px solid var(--line);color:var(--txt);padding:6px 10px;border-radius:8px;"></select>
+        <select id="gas-filtro-cat" onchange="renderGastos()" style="background:var(--bg-3);border:1px solid var(--line);color:var(--txt);padding:6px 10px;border-radius:8px;"></select>
+      </div>
+      <table id="tblGastos"></table>
+    </div>
+  </section>
+
+  <!-- ============ PAGE: TARJETA ============ -->
+  <section id="page-tarjeta" class="page">
+    <div class="subtabs" id="tarSubtabs">
+      <button data-sub="consumo" class="active">Consumos</button>
+      <button data-sub="pagos">Pagos del resumen</button>
+      <button data-sub="importar">Importar resumen</button>
+    </div>
+
+    <div id="tar-consumo">
+      <div class="card">
+        <h3>Cargar consumo de tarjeta</h3>
+        <div class="form-row">
+          <div class="field"><label>Fecha</label><input type="date" id="tar-fecha"></div>
+          <div class="field"><label>Comercio</label><input id="tar-comercio"></div>
+          <div class="field"><label>Categoría</label><select id="tar-categoria"></select></div>
+          <div class="field"><label>Monto</label><input type="number" id="tar-monto"></div>
+          <div class="field"><label>Tipo</label><select id="tar-tipo"><option>Personal</option><option>Negocio</option></select></div>
+          <div class="field"><label>Mes resumen</label><input type="month" id="tar-mes-res"></div>
+        </div>
+        <div class="form-row r2" style="margin-top: 10px;">
+          <div class="field"><label>Nota</label><input id="tar-nota" placeholder="Cuota, suscripción, recortar..."></div>
+          <div class="field"><label>¿Recortar?</label><select id="tar-recortar"><option value="false">No</option><option value="true">Sí, revisar</option></select></div>
+          <div class="field"></div>
+          <div class="field"><button class="btn" onclick="addConsumo()">Agregar consumo</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row-flex" style="margin-bottom: 14px;">
+          <h3 style="margin: 0;">Consumos cargados</h3>
+          <div class="spacer"></div>
+          <select id="tar-filtro-mes" onchange="renderConsumos()" style="background:var(--bg-3);border:1px solid var(--line);color:var(--txt);padding:6px 10px;border-radius:8px;"></select>
+          <button class="btn ghost sm" onclick="toggleSoloRecortar()" id="btnSoloRecortar">Mostrar solo "revisar"</button>
+        </div>
+        <table id="tblConsumos"></table>
+      </div>
+    </div>
+
+    <div id="tar-pagos" class="hidden">
+      <div class="card">
+        <h3>Pago del resumen mensual</h3>
+        <div class="desc">El pago del resumen es la salida real de caja. Distinto del consumo.</div>
+        <div class="form-row">
+          <div class="field"><label>Fecha pago</label><input type="date" id="pag-fecha"></div>
+          <div class="field"><label>Período</label><input id="pag-resumen" placeholder="Resumen Visa Abril"></div>
+          <div class="field"><label>Tarjeta</label><input id="pag-tarjeta" placeholder="Galicia Visa"></div>
+          <div class="field"><label>Monto</label><input type="number" id="pag-monto"></div>
+          <div class="field"><label>Estado</label><select id="pag-estado"><option>Real</option><option>Proyectado</option></select></div>
+          <div class="field"><button class="btn" onclick="addPagoTarjeta()">Agregar</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Pagos registrados</h3>
+        <table id="tblPagosTarjeta"></table>
+      </div>
+    </div>
+
+    <div id="tar-importar" class="hidden">
+      <div class="card">
+        <h3>Importar resumen Visa Galicia (PDF)</h3>
+        <div class="desc">Subí el PDF del resumen y se extraen automáticamente los consumos del bloque "DETALLE DEL CONSUMO". Cada ítem se categoriza solo según el comercio, mostrás preview, ajustás y confirmás.</div>
+        <div class="form-row r2">
+          <div class="field"><label>Mes resumen (donde se paga)</label><input type="month" id="imp-mes-res"></div>
+          <div class="field"><label>Tipo por defecto</label><select id="imp-tipo"><option>Personal</option><option>Negocio</option></select></div>
+          <div class="field"><label>TC USD para consumos en dólares</label><input type="number" id="imp-tc" placeholder="1420"></div>
+          <div class="field">
+            <label>Subir PDF</label>
+            <label class="btn" style="cursor:pointer; text-align:center;">Elegir PDF<input type="file" id="imp-pdf" accept=".pdf" style="display:none;" onchange="leerPdfTarjeta(event)"></label>
+          </div>
+        </div>
+        <div id="imp-pdf-status" style="margin-top: 12px; font-size: 12px; color: var(--txt-2);"></div>
+        <details style="margin-top: 14px;">
+          <summary style="cursor:pointer; color: var(--txt-2); font-size: 12px;">¿Otro banco? Pegar manualmente fila por fila</summary>
+          <div style="margin-top: 10px;">
+            <textarea id="imp-textarea" placeholder="06/04&#9;BURGUER KING LUJAN WALK&#9;91480&#9;Comidas / ocio&#10;06/04&#9;CINEPOLIS LUJAN&#9;92000" style="width:100%; min-height: 160px; background: var(--bg-3); border: 1px solid var(--line); color: var(--txt); padding: 12px; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 13px; resize: vertical;"></textarea>
+            <button class="btn ghost sm" style="margin-top: 8px;" onclick="importarResumen()">Procesar pegado</button>
+          </div>
+        </details>
+        <div id="imp-result" style="margin-top: 14px;"></div>
+        <div id="imp-preview" style="margin-top: 14px;"></div>
+      </div>
+      <div class="card">
+        <h3>Análisis del último resumen importado</h3>
+        <div class="desc">Top categorías, top comercios, sugerencias de recorte para llegar a meta de $1M.</div>
+        <div id="analisis-resumen"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE: INVERSIONES ============ -->
+  <section id="page-inversiones" class="page">
+    <div class="subtabs" id="invSubtabs">
+      <button data-sub="movimiento" class="active">Registrar movimiento</button>
+      <button data-sub="cuentas">Por cuenta y rendimiento</button>
+      <button data-sub="historial">Historial</button>
+    </div>
+
+    <div id="inv-movimiento">
+      <div class="card">
+        <h3>Registrar movimiento</h3>
+        <div class="desc">
+          <strong>Aporte</strong>: pongo plata. <strong>Desarme</strong>: retiro plata. <strong>Actualización</strong>: cargo el saldo total de la cuenta a fin de mes — el sistema calcula el rendimiento neto (saldo nuevo − saldo anterior − aportes + desarmes del período).
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Fecha</label><input type="date" id="inv-fecha"></div>
+          <div class="field"><label>Destino</label><input id="inv-destino" placeholder="FIMA, Cocos, Balanz, MEP..." list="destinos-list" onchange="onInvTipoChange()"><datalist id="destinos-list"></datalist></div>
+          <div class="field"><label>Monto</label><input type="number" id="inv-monto"></div>
+          <div class="field"><label>Moneda</label><select id="inv-moneda"><option>ARS</option><option>USD</option></select></div>
+          <div class="field"><label>Tipo</label><select id="inv-tipo" onchange="onInvTipoChange()">
+            <option value="aporte">Aporte</option>
+            <option value="desarme">Desarme</option>
+            <option value="actualizacion">Actualización (saldo total)</option>
+          </select></div>
+          <div class="field"><button class="btn" onclick="addInversion()">Registrar</button></div>
+        </div>
+        <div id="inv-tipo-hint" style="margin-top: 12px; font-size: 12px; color: var(--txt-2);"></div>
+      </div>
+    </div>
+
+    <div id="inv-cuentas" class="hidden">
+      <div class="kpis" id="invKpis"></div>
+      <div class="card">
+        <h3>Saldo por cuenta + rendimiento del último período</h3>
+        <div class="desc">Saldo actual = última actualización (si la hay) o aportes − desarmes. Rendimiento = saldo nuevo − saldo anterior − aportes netos del período.</div>
+        <table id="tblPorCuenta"></table>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Composición actual</h3>
+          <div class="chart-wrap"><canvas id="chInvComposicion"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Evolución de saldos por cuenta</h3>
+          <div class="desc">Línea sólida: saldo actualizado. Línea punteada: cuando solo hay aportes/desarmes sin actualización.</div>
+          <div class="chart-wrap"><canvas id="chInvEvol"></canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Rendimiento mensual por cuenta</h3>
+        <div class="desc">Cada barra es el rendimiento neto del mes (intereses / variación de mercado descontando movimientos del usuario).</div>
+        <div class="chart-wrap"><canvas id="chInvRend"></canvas></div>
+      </div>
+    </div>
+
+    <div id="inv-historial" class="hidden">
+      <div class="card">
+        <h3>Historial completo de movimientos</h3>
+        <div class="row-flex" style="margin-bottom: 14px;">
+          <select id="inv-filtro-destino" onchange="renderInversiones()" style="background:var(--bg-3);border:1px solid var(--line);color:var(--txt);padding:6px 10px;border-radius:8px;"></select>
+          <select id="inv-filtro-tipo" onchange="renderInversiones()" style="background:var(--bg-3);border:1px solid var(--line);color:var(--txt);padding:6px 10px;border-radius:8px;">
+            <option value="">Todos los tipos</option>
+            <option value="aporte">Aportes</option>
+            <option value="desarme">Desarmes</option>
+            <option value="actualizacion">Actualizaciones</option>
+          </select>
+        </div>
+        <table id="tblInversiones"></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE: PROYECCION ============ -->
+  <section id="page-proyeccion" class="page">
+    <div class="card">
+      <h3>Proyección de ahorro</h3>
+      <div class="desc">3 meses adelante y proyección a fin de año, en base al promedio de ahorro de los últimos meses cerrados.</div>
+      <div id="proy-kpis" class="kpis"></div>
+      <div class="chart-wrap tall"><canvas id="chProyAnual"></canvas></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Saldo de caja diario — 120 días</h3>
+        <div class="desc">Real (sólido) y escenario completo (línea continua sumando proyectados).</div>
+        <div class="chart-wrap tall"><canvas id="chCajaDetalle"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Resumen mensual</h3>
+        <table id="tblResumenMensual"></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE: CONFIG ============ -->
+  <section id="page-config" class="page">
+    <div class="card">
+      <h3>Parámetros</h3>
+      <div class="form-row r2">
+        <div class="field"><label>Saldo inicial caja (ARS)</label><input type="number" id="cfg-saldo"></div>
+        <div class="field"><label>Objetivo tarjeta / mes</label><input type="number" id="cfg-objtar"></div>
+        <div class="field"><label>Alerta tarjeta amarilla (%)</label><input type="number" step="0.01" id="cfg-alerta"></div>
+        <div class="field"><label>TC USD → ARS</label><input type="number" id="cfg-tc"></div>
+      </div>
+      <div style="margin-top: 14px;"><button class="btn" onclick="saveConfig()">Guardar parámetros</button></div>
+    </div>
+    <div class="card">
+      <h3>Objetivos por categoría (presupuesto mensual)</h3>
+      <div class="desc">Cada gasto se mide contra estos topes para activar el semáforo.</div>
+      <div id="cfgCatGrid" class="form-row" style="grid-template-columns: repeat(3, 1fr);"></div>
+      <div style="margin-top: 14px;"><button class="btn" onclick="saveCategorias()">Guardar objetivos</button></div>
+    </div>
+    <div class="card">
+      <h3>Datos</h3>
+      <div class="row-flex">
+        <button class="btn ghost" onclick="exportData()">⬇ Exportar todo (JSON)</button>
+        <label class="btn ghost" style="cursor:pointer;">⬆ Importar JSON<input type="file" accept=".json" style="display:none;" onchange="importData(event)"></label>
+        <button class="btn danger" onclick="resetAll()">⚠ Borrar todo</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* =================================================================== */
+/* DATA LAYER                                                           */
+/* =================================================================== */
+const SEED = {"ingresos":[{"id":"ing_0","fecha":"2026-04-06","origen":"LEKIGOS","monto":2762000,"estado":"Real","notas":"Acreditado 5º día hábil de abril según archivo base","mes":"2026-04"},{"id":"ing_1","fecha":"2026-04-26","origen":"DT COPACKING","monto":334000,"estado":"Real","notas":"Ingreso real informado 26/04","mes":"2026-04"},{"id":"ing_2","fecha":"2026-05-05","origen":"RIBS AL RIO (marzo)","monto":1200000,"estado":"Real","notas":"Se cobra último día hábil; cambiar a Real cuando impacte","mes":"2026-05"},{"id":"ing_3","fecha":"2026-05-04","origen":"LEKIGOS","monto":3166000,"estado":"Real","notas":"Programado 5º día hábil","mes":"2026-05"},{"id":"ing_4","fecha":"2026-05-06","origen":"Otros","monto":117000,"estado":"Real","notas":"ltima cuota de Mk Organic","mes":"2026-05"},{"id":"ing_5","fecha":"2026-05-29","origen":"RIBS AL RIO (apr)","monto":1200000,"estado":"Proyectado","notas":"Programado último día hábil; corresponde al mes anterior","mes":"2026-05"},{"id":"ing_6","fecha":"2026-06-05","origen":"LEKIGOS","monto":4800000,"estado":"Proyectado","notas":"Programado 5º día hábil","mes":"2026-06"},{"id":"ing_7","fecha":"2026-06-30","origen":"RIBS AL RIO (may)","monto":1200000,"estado":"Proyectado","notas":"Programado último día hábil; corresponde al mes anterior","mes":"2026-06"},{"id":"ing_8","fecha":"2026-07-07","origen":"LEKIGOS","monto":3166000,"estado":"Proyectado","notas":"Programado 5º día hábil","mes":"2026-07"},{"id":"ing_9","fecha":"2026-07-31","origen":"RIBS AL RIO (jun)","monto":1200000,"estado":"Proyectado","notas":"Programado último día hábil; corresponde al mes anterior","mes":"2026-07"}],"gastos":[{"id":"gas_0","fecha":"2026-04-06","categoria":"Seguro","descripcion":"Seguro auto","monto":83000,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-04"},{"id":"gas_1","fecha":"2026-04-06","categoria":"Servicios","descripcion":"ICS","monto":45000,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-04"},{"id":"gas_2","fecha":"2026-04-06","categoria":"Servicios","descripcion":"PLYO Leandro","monto":50000,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-04"},{"id":"gas_3","fecha":"2026-04-06","categoria":"Servicios","descripcion":"Luz","monto":108966,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"se rechazo el debiro el mes de marzo asique pago con debito en abril","mes":"2026-04"},{"id":"gas_4","fecha":"2026-04-13","categoria":"Créditos","descripcion":"Cuota Crédito Galicia","monto":240000,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-04"},{"id":"gas_5","fecha":"2026-04-13","categoria":"MercadoPago","descripcion":"Mercado Pago crédito","monto":411659,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-04"},{"id":"gas_6","fecha":"2026-04-13","categoria":"Servicios","descripcion":"Verisure","monto":81000,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-04"},{"id":"gas_7","fecha":"2026-04-28","categoria":"Super / hogar","descripcion":"Leña","monto":81000,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-04"},{"id":"gas_8","fecha":"2026-04-28","categoria":"Comidas / ocio","descripcion":"Sustrato","monto":49790,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-04"},{"id":"gas_9","fecha":"2026-04-28","categoria":"Super / hogar","descripcion":"Peluqueria","monto":14000,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-04"},{"id":"gas_10","fecha":"2026-04-30","categoria":"Ocio","descripcion":"Carrera 21k","monto":30000,"medio":"Credito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-04"},{"id":"gas_11","fecha":"2026-04-30","categoria":"Super / hogar","descripcion":"chino","monto":32000,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-04"},{"id":"gas_12","fecha":"2026-04-30","categoria":"Super/Hogar","descripcion":"Chino","monto":52000,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-04"},{"id":"gas_13","fecha":"2026-05-04","categoria":"Comidas / ocio","descripcion":"Notredame","monto":17000,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-05"},{"id":"gas_14","fecha":"2026-05-04","categoria":"Comidas / ocio","descripcion":"a lo balderrama","monto":31000,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-05"},{"id":"gas_15","fecha":"2026-05-04","categoria":"Comidas / ocio","descripcion":"chino","monto":66400,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-05"},{"id":"gas_16","fecha":"2026-06-05","categoria":"Otros","descripcion":"farmacia","monto":17000,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-05"},{"id":"gas_17","fecha":"2026-05-05","categoria":"Mascotas","descripcion":"Alimento cooper y gatos","monto":178900,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-05"},{"id":"gas_18","fecha":"2026-05-05","categoria":"Otros","descripcion":"farmacia","monto":17000,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-05"},{"id":"gas_19","fecha":"2026-05-05","categoria":"Comidas / ocio","descripcion":"chino","monto":14300,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-05"},{"id":"gas_20","fecha":"2026-05-07","categoria":"Créditos","descripcion":"Cuota Crédito Galicia","monto":240000,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Mayo proyectado","mes":"2026-05"},{"id":"gas_21","fecha":"2026-05-08","categoria":"Comidas / ocio","descripcion":"chino","monto":52645,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-05"},{"id":"gas_22","fecha":"2026-06-08","categoria":"Comidas / ocio","descripcion":"verduleria","monto":11650,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-05"},{"id":"gas_23","fecha":"2026-05-10","categoria":"Comidas / ocio","descripcion":"cena cumple ","monto":163121,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-05"},{"id":"gas_24","fecha":"2026-05-10","categoria":"Comidas / ocio","descripcion":"no recuerdo","monto":20165,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-05"},{"id":"gas_25","fecha":"2026-05-10","categoria":"Otros","descripcion":"estacionamiento por asesoria ribs","monto":8500,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-05"},{"id":"gas_26","fecha":"2026-05-10","categoria":"Comidas / ocio","descripcion":"Desayuno YPF","monto":14000,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-05"},{"id":"gas_27","fecha":"2026-05-10","categoria":"Seguro","descripcion":"Seguro auto","monto":82336,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"Mayo proyectado","mes":"2026-05"},{"id":"gas_28","fecha":"2026-05-10","categoria":"Seguro","descripcion":"medife","monto":9545,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"","mes":"2026-05"},{"id":"gas_29","fecha":"2026-05-12","categoria":"MercadoPago","descripcion":"Mercado Pago crédito","monto":387500,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Mayo proyectado","mes":"2026-05"},{"id":"gas_30","fecha":"2026-05-15","categoria":"Servicios","descripcion":"Verisure","monto":80520,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"Mayo proyectado","mes":"2026-05"},{"id":"gas_31","fecha":"2026-05-15","categoria":"Servicios","descripcion":"ICS","monto":45000,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"Mayo proyectado","mes":"2026-05"},{"id":"gas_32","fecha":"2026-05-15","categoria":"Servicios","descripcion":"PLYO Leandro","monto":55000,"medio":"Débito","tipo":"Personal","estado":"Real","notas":"Mayo proyectado","mes":"2026-05"},{"id":"gas_33","fecha":"2026-05-20","categoria":"Servicios","descripcion":"Luz","monto":120000,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Mayo proyectado","mes":"2026-05"},{"id":"gas_34","fecha":"2026-05-08","categoria":"Nafta","descripcion":"Nafta","monto":80000,"medio":"Débito","tipo":"Negocio","estado":"Proyectado","notas":"Mayo proyectado","mes":"2026-05"},{"id":"gas_35","fecha":"2026-05-10","categoria":"Comidas / ocio","descripcion":"Comida","monto":216000,"medio":"Cash","tipo":"Personal","estado":"Proyectado","notas":"Mayo proyectado","mes":"2026-05"},{"id":"gas_36","fecha":"2026-06-08","categoria":"Créditos","descripcion":"Cuota Crédito Galicia","monto":240000,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Proyectado replicado desde mayo: Cuota Crédito Galicia","mes":"2026-06"},{"id":"gas_37","fecha":"2026-06-10","categoria":"Seguro","descripcion":"Seguro auto","monto":83000,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Proyectado replicado desde mayo: Seguro auto","mes":"2026-06"},{"id":"gas_38","fecha":"2026-06-12","categoria":"MercadoPago","descripcion":"Mercado Pago crédito","monto":411659,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Proyectado replicado desde mayo: Mercado Pago crédito","mes":"2026-06"},{"id":"gas_39","fecha":"2026-06-15","categoria":"Servicios","descripcion":"Verisure","monto":81000,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Proyectado replicado desde mayo: Verisure","mes":"2026-06"},{"id":"gas_40","fecha":"2026-06-15","categoria":"Servicios","descripcion":"ICS","monto":50000,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Proyectado replicado desde mayo: ICS","mes":"2026-06"},{"id":"gas_41","fecha":"2026-06-15","categoria":"Servicios","descripcion":"PLYO Leandro","monto":50000,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Proyectado replicado desde mayo: PLYO Leandro","mes":"2026-06"},{"id":"gas_42","fecha":"2026-06-22","categoria":"Servicios","descripcion":"Luz","monto":120000,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Proyectado replicado desde mayo: Luz","mes":"2026-06"},{"id":"gas_43","fecha":"2026-06-08","categoria":"Nafta","descripcion":"Nafta","monto":80000,"medio":"Débito","tipo":"Negocio","estado":"Proyectado","notas":"Proyectado replicado desde mayo: Nafta","mes":"2026-06"},{"id":"gas_44","fecha":"2026-06-10","categoria":"Comidas / ocio","descripcion":"Comida","monto":216000,"medio":"Cash","tipo":"Personal","estado":"Proyectado","notas":"Proyectado replicado desde mayo: Comida","mes":"2026-06"},{"id":"gas_45","fecha":"2026-07-07","categoria":"Créditos","descripcion":"Cuota Crédito Galicia","monto":240000,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Proyectado replicado desde mayo: Cuota Crédito Galicia","mes":"2026-07"},{"id":"gas_46","fecha":"2026-07-10","categoria":"Seguro","descripcion":"Seguro auto","monto":83000,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Proyectado replicado desde mayo: Seguro auto","mes":"2026-07"},{"id":"gas_47","fecha":"2026-07-13","categoria":"MercadoPago","descripcion":"Mercado Pago crédito","monto":411659,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Proyectado replicado desde mayo: Mercado Pago crédito","mes":"2026-07"},{"id":"gas_48","fecha":"2026-07-15","categoria":"Servicios","descripcion":"Verisure","monto":81000,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Proyectado replicado desde mayo: Verisure","mes":"2026-07"},{"id":"gas_49","fecha":"2026-07-15","categoria":"Servicios","descripcion":"ICS","monto":50000,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Proyectado replicado desde mayo: ICS","mes":"2026-07"},{"id":"gas_50","fecha":"2026-07-15","categoria":"Servicios","descripcion":"PLYO Leandro","monto":50000,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Proyectado replicado desde mayo: PLYO Leandro","mes":"2026-07"},{"id":"gas_51","fecha":"2026-07-20","categoria":"Servicios","descripcion":"Luz","monto":120000,"medio":"Débito","tipo":"Personal","estado":"Proyectado","notas":"Proyectado replicado desde mayo: Luz","mes":"2026-07"},{"id":"gas_52","fecha":"2026-07-08","categoria":"Nafta","descripcion":"Nafta","monto":80000,"medio":"Débito","tipo":"Negocio","estado":"Proyectado","notas":"Proyectado replicado desde mayo: Nafta","mes":"2026-07"},{"id":"gas_53","fecha":"2026-07-10","categoria":"Comidas / ocio","descripcion":"Comida","monto":216000,"medio":"Cash","tipo":"Personal","estado":"Proyectado","notas":"Proyectado replicado desde mayo: Comida","mes":"2026-07"}],"inversiones":[{"id":"inv_0","fecha":"2026-05-05","destino":"Fondo FIMA","monto":1000000,"moneda":"ARS","tc":1,"tipo":"aporte","mes":"2026-05","notas":""},{"id":"inv_1","fecha":"2026-05-05","destino":"Cuenta MAX Brubank","monto":500000,"moneda":"ARS","tc":1,"tipo":"aporte","mes":"2026-05","notas":""},{"id":"inv_8iix0iw","fecha":"2026-05-10","destino":"Cocos Cap","monto":1423903,"moneda":"ARS","tc":1420,"tipo":"aporte","mes":"2026-05","notas":""},{"id":"inv_dq5qf97","fecha":"2026-05-10","destino":"Balanz","monto":248601,"moneda":"ARS","tc":1420,"tipo":"aporte","mes":"2026-05","notas":""}],"consumos_tarjeta":[{"id":"tar_0","fecha":"2025-06-03","categoria":"Tarjeta / cuotas","comercio":"MERPAGO*AYRES","monto":56666.66,"nota":"Cuota arrastrada","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2025-06","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_1","fecha":"2025-07-12","categoria":"Hogar / Compras","comercio":"ARREDO PILAR","monto":30608.44,"nota":"Cuota arrastrada","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2025-07","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_2","fecha":"2025-10-26","categoria":"Electrónica","comercio":"MERPAGO*ELECTRONICAFLA","monto":118525.94,"nota":"Cuota arrastrada","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2025-10","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_3","fecha":"2025-11-01","categoria":"Compras online","comercio":"MERPAGO*MERCADOLIBRE","monto":11000,"nota":"Cuota arrastrada","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2025-11","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_4","fecha":"2025-12-11","categoria":"Otros","comercio":"MERPAGO*VART","monto":6233.23,"nota":"Cuota arrastrada","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2025-12","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_5","fecha":"2026-02-01","categoria":"Super / hogar","comercio":"HIPER CHANGOMAS","monto":81314.45,"nota":"Cuota arrastrada","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-02","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_6","fecha":"2026-02-24","categoria":"Electrónica","comercio":"MERPAGO*ELECTRONICAFL","monto":49365.01,"nota":"Cuota arrastrada","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-02","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_7","fecha":"2026-02-28","categoria":"Super / hogar","comercio":"HIPER CHANGOMAS","monto":28373.56,"nota":"Cuota arrastrada","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-02","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_8","fecha":"2026-03-18","categoria":"Otros","comercio":"MERPAGO*PADRI2024","monto":19375,"nota":"Cuota arrastrada","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-03","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_9","fecha":"2026-03-19","categoria":"Retiro / Zurich","comercio":"ZURICH INTERNA","monto":481441.19,"nota":"Fondo retiro - mantener","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-03","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_10","fecha":"2026-03-21","categoria":"MercadoPago","comercio":"MERPAGO*MP","monto":26368.3,"nota":"Revisar","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-03","recortar":true,"mes_resumen":"2026-04"},{"id":"tar_11","fecha":"2026-03-22","categoria":"Software / apps","comercio":"RENDER A HOUSE LLC USD 5","monto":7100,"nota":"USD estimado TC 1420","tipo":"Negocio","origen":"Resumen Visa abril","mes_consumo":"2026-03","recortar":true,"mes_resumen":"2026-04"},{"id":"tar_12","fecha":"2026-03-24","categoria":"Servicios","comercio":"CLARO DEB AUT","monto":46354.12,"nota":"Servicio fijo","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-03","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_13","fecha":"2026-03-25","categoria":"Mascotas","comercio":"MERPAGO*DMPETS","monto":125000,"nota":"Mascotas","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-03","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_14","fecha":"2026-03-27","categoria":"MercadoPago","comercio":"MERPAGO*MP","monto":104108.4,"nota":"Revisar","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-03","recortar":true,"mes_resumen":"2026-04"},{"id":"tar_15","fecha":"2026-03-28","categoria":"Nafta","comercio":"MERPAGO*AXIONENERGY","monto":9700,"nota":"Nafta","tipo":"Negocio","origen":"Resumen Visa abril","mes_consumo":"2026-03","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_16","fecha":"2026-03-29","categoria":"Suscripciones","comercio":"DLO*Spotify","monto":4981.49,"nota":"Suscripción","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-03","recortar":true,"mes_resumen":"2026-04"},{"id":"tar_17","fecha":"2026-03-29","categoria":"Comidas / ocio","comercio":"Lorien Bakehouse","monto":30100,"nota":"Ocio","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-03","recortar":true,"mes_resumen":"2026-04"},{"id":"tar_18","fecha":"2026-03-31","categoria":"Super / hogar","comercio":"AUTOSERVICIO","monto":8800,"nota":"Consumo diario","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-03","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_19","fecha":"2026-03-31","categoria":"Peajes","comercio":"AUTOVIA DEL MERC","monto":3773.74,"nota":"Peaje","tipo":"Negocio","origen":"Resumen Visa abril","mes_consumo":"2026-03","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_20","fecha":"2026-04-03","categoria":"Servicios","comercio":"SERVIDUAL LUJAN SA","monto":90509.44,"nota":"Servicio","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_21","fecha":"2026-04-04","categoria":"Suscripciones","comercio":"DLO*PRIMEVIDEO","monto":7863.79,"nota":"Suscripción","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":true,"mes_resumen":"2026-04"},{"id":"tar_22","fecha":"2026-04-04","categoria":"Software / apps","comercio":"CLAUDE.AI SUBSCR USD 20","monto":28400,"nota":"USD estimado TC 1420","tipo":"Negocio","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":true,"mes_resumen":"2026-04"},{"id":"tar_23","fecha":"2026-04-05","categoria":"Software / apps","comercio":"OPENAI *CHATGPT USD 20","monto":28400,"nota":"Eliminar / revisar","tipo":"Negocio","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":true,"mes_resumen":"2026-04"},{"id":"tar_24","fecha":"2026-04-06","categoria":"MercadoPago","comercio":"MERPAGO*SCLUJAN","monto":50000,"nota":"Revisar","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":true,"mes_resumen":"2026-04"},{"id":"tar_25","fecha":"2026-04-07","categoria":"Peajes","comercio":"CAMINO PQUE B AY","monto":10000,"nota":"Peaje","tipo":"Negocio","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_26","fecha":"2026-04-08","categoria":"Peajes","comercio":"AUTOPISTA DEL OE","monto":8748.56,"nota":"Peaje","tipo":"Negocio","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_27","fecha":"2026-04-08","categoria":"Peajes","comercio":"AUTOPISTAS DEL S","monto":4175.44,"nota":"Peaje","tipo":"Negocio","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_28","fecha":"2026-04-10","categoria":"Comidas / ocio","comercio":"BURGUER KING LUJAN WALK","monto":91480,"nota":"Ocio alto","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":true,"mes_resumen":"2026-04"},{"id":"tar_29","fecha":"2026-04-10","categoria":"Comidas / ocio","comercio":"CINEPOLIS LUJAN","monto":92000,"nota":"Ocio alto","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":true,"mes_resumen":"2026-04"},{"id":"tar_30","fecha":"2026-04-11","categoria":"Suscripciones","comercio":"APPLE.COM/BILL USD 0.99","monto":1405.8,"nota":"USD estimado TC 1420","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":true,"mes_resumen":"2026-04"},{"id":"tar_31","fecha":"2026-04-11","categoria":"Suscripciones","comercio":"GOOGLE *YouTubeP USD 5","monto":7100,"nota":"Eliminar","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":true,"mes_resumen":"2026-04"},{"id":"tar_32","fecha":"2026-04-11","categoria":"Software / apps","comercio":"INOLYZER LLC USD 15","monto":21300,"nota":"Revisar","tipo":"Negocio","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":true,"mes_resumen":"2026-04"},{"id":"tar_33","fecha":"2026-04-12","categoria":"Suscripciones","comercio":"DLOCAL*NETFLIX","monto":22648.49,"nota":"Suscripción","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":true,"mes_resumen":"2026-04"},{"id":"tar_34","fecha":"2026-04-12","categoria":"Peajes","comercio":"AUTOPISTA PROVIN","monto":4200,"nota":"Peaje","tipo":"Negocio","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_35","fecha":"2026-04-13","categoria":"MercadoPago","comercio":"MERPAGO*SCLUJAN","monto":21000,"nota":"Revisar","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":true,"mes_resumen":"2026-04"},{"id":"tar_36","fecha":"2026-04-15","categoria":"Compras online","comercio":"MERPAGO*SHOPGALLERY","monto":12750,"nota":"Revisar","tipo":"Personal","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_37","fecha":"2026-04-17","categoria":"Peajes","comercio":"AUTOPISTAS URBAN","monto":10097.92,"nota":"Peaje","tipo":"Negocio","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_38","fecha":"2026-04-18","categoria":"Nafta","comercio":"YPF ACCESO OESTE CAP","monto":20000.03,"nota":"Nafta","tipo":"Negocio","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_39","fecha":"2026-04-21","categoria":"Nafta","comercio":"MERPAGO*AXIONENERGY","monto":20300,"nota":"Nafta","tipo":"Negocio","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_40","fecha":"2026-04-21","categoria":"Peajes","comercio":"CAMINO PQUE B AY","monto":2500,"nota":"Peaje","tipo":"Negocio","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_41","fecha":"2026-04-22","categoria":"Peajes","comercio":"AUTOPISTA DEL OE","monto":4771.96,"nota":"Peaje","tipo":"Negocio","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":false,"mes_resumen":"2026-04"},{"id":"tar_42","fecha":"2026-04-22","categoria":"Peajes","comercio":"AUTOPISTAS DEL S","monto":994.15,"nota":"Peaje","tipo":"Negocio","origen":"Resumen Visa abril","mes_consumo":"2026-04","recortar":false,"mes_resumen":"2026-04"}],"pagos_tarjeta":[{"id":"pag_0","fecha":"2026-04-06","resumen":"Resumen Visa Marzo","tarjeta":"Tarjeta Galicia Visa","monto":2084287,"estado":"Real","notas":"Pago real del resumen de marzo","mes":"2026-04"},{"id":"pag_1","fecha":"2026-05-04","resumen":"Resumen Visa Abril","tarjeta":"Tarjeta Galicia Visa","monto":1887189,"estado":"Real","notas":"Valor conocido del resumen que se paga el 04/05","mes":"2026-05"},{"id":"pag_2","fecha":"2026-06-04","resumen":"Resumen Visa Mayo","tarjeta":"Tarjeta Galicia Visa","monto":1400000,"estado":"Proyectado","notas":"Meta intermedia de reducción","mes":"2026-06"},{"id":"pag_3","fecha":"2026-07-04","resumen":"Resumen Visa Junio","tarjeta":"Tarjeta Galicia Visa","monto":1000000,"estado":"Proyectado","notas":"Meta final: tarjeta alrededor de $1.000.000","mes":"2026-07"}],"config":{"saldo_inicial":1600000,"objetivo_tarjeta":1000000,"alerta_tarjeta":0.85,"tc_usd":1420,"objetivos_categoria":{"Comidas / ocio":250000,"Compras online":200000,"Créditos":250000,"Electrónica":200000,"Hogar / Compras":200000,"Mascotas":200000,"MercadoPago":150000,"Nafta":180000,"Otros":200000,"Peajes":120000,"Retiro / Zurich":500000,"Seguro":200000,"Servicios":400000,"Software / apps":50000,"Super / hogar":250000,"Suscripciones":50000,"Tarjeta / cuotas":200000},"fecha_inicio":"2026-04-01"}};
+const STORAGE_KEY = 'maxi_dashboard_v1';
+
+let DB = loadDB();
+
+function loadDB() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  // First load: hydrate from seed
+  const fresh = JSON.parse(JSON.stringify(SEED));
+  saveDB(fresh);
+  return fresh;
+}
+
+function saveDB(db) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(db || DB));
+}
+
+function uid(prefix) { return prefix + '_' + Math.random().toString(36).slice(2,9); }
+
+const fmtARS = n => {
+  if (n == null || isNaN(n)) return '—';
+  const sign = n < 0 ? '-' : '';
+  const a = Math.abs(Math.round(n));
+  return sign + '$' + a.toLocaleString('es-AR');
+};
+const fmtCompact = n => {
+  if (n == null || isNaN(n)) return '—';
+  const a = Math.abs(n);
+  if (a >= 1e6) return (n/1e6).toFixed(1).replace('.0','') + 'M';
+  if (a >= 1e3) return (n/1e3).toFixed(0) + 'k';
+  return Math.round(n).toString();
+};
+const fmtPct = n => (n*100).toFixed(0) + '%';
+
+/* =================================================================== */
+/* MES HELPERS                                                          */
+/* =================================================================== */
+const MESES_NOMBRE = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const mesLabel = ym => {
+  if (!ym) return '';
+  const [y,m] = ym.split('-');
+  return MESES_NOMBRE[parseInt(m)-1] + ' ' + y.slice(2);
+};
+const ymOfDate = iso => iso ? iso.slice(0,7) : null;
+
+function getAllMeses() {
+  const set = new Set();
+  DB.ingresos.forEach(x => x.mes && set.add(x.mes));
+  DB.gastos.forEach(x => x.mes && set.add(x.mes));
+  DB.consumos_tarjeta.forEach(x => x.mes_resumen && set.add(x.mes_resumen));
+  DB.pagos_tarjeta.forEach(x => x.mes && set.add(x.mes));
+  DB.inversiones.forEach(x => x.mes && set.add(x.mes));
+  return [...set].filter(Boolean).sort();
+}
+
+let selectedMes = null;
+
+/* =================================================================== */
+/* CAJA / ESCENARIO                                                     */
+/* =================================================================== */
+function buildDailyCash() {
+  // Devuelve array {fecha, ingreso_real, ingreso_proy, gasto_real, gasto_proy, pago_tarj_real, pago_tarj_proy, saldo_real, saldo_esc}
+  const cfg = DB.config;
+  const start = new Date(cfg.fecha_inicio || '2026-04-01');
+  const days = 120;
+  const arr = [];
+  const map = {};
+  for (let i = 0; i < days; i++) {
+    const d = new Date(start); d.setDate(d.getDate() + i);
+    const iso = d.toISOString().slice(0,10);
+    map[iso] = { fecha: iso, ingreso_real: 0, ingreso_proy: 0, gasto_real: 0, gasto_proy: 0, pago_tarj_real: 0, pago_tarj_proy: 0 };
+    arr.push(map[iso]);
+  }
+
+  DB.ingresos.forEach(x => {
+    if (!x.fecha || !map[x.fecha]) return;
+    if (x.estado === 'Real') map[x.fecha].ingreso_real += x.monto;
+    else map[x.fecha].ingreso_proy += x.monto;
+  });
+  DB.gastos.forEach(x => {
+    if (!x.fecha || !map[x.fecha]) return;
+    if (x.estado === 'Real') map[x.fecha].gasto_real += x.monto;
+    else map[x.fecha].gasto_proy += x.monto;
+  });
+  DB.pagos_tarjeta.forEach(x => {
+    if (!x.fecha || !map[x.fecha]) return;
+    if (x.estado === 'Real') map[x.fecha].pago_tarj_real += x.monto;
+    else map[x.fecha].pago_tarj_proy += x.monto;
+  });
+
+  let saldoReal = cfg.saldo_inicial || 0;
+  let saldoEsc = cfg.saldo_inicial || 0;
+  arr.forEach(d => {
+    saldoReal += d.ingreso_real - d.gasto_real - d.pago_tarj_real;
+    saldoEsc += (d.ingreso_real + d.ingreso_proy) - (d.gasto_real + d.gasto_proy) - (d.pago_tarj_real + d.pago_tarj_proy);
+    d.saldo_real = saldoReal;
+    d.saldo_esc = saldoEsc;
+  });
+  return arr;
+}
+
+function summaryByMonth() {
+  const meses = getAllMeses();
+  const out = meses.map(m => ({ mes: m, ingresos_real:0, ingresos_proy:0, gastos_real:0, gastos_proy:0, pago_tarj_real:0, pago_tarj_proy:0, consumo_tarjeta:0 }));
+  const idx = Object.fromEntries(out.map((x,i) => [x.mes, i]));
+  DB.ingresos.forEach(x => {
+    if (idx[x.mes] == null) return;
+    if (x.estado === 'Real') out[idx[x.mes]].ingresos_real += x.monto;
+    else out[idx[x.mes]].ingresos_proy += x.monto;
+  });
+  DB.gastos.forEach(x => {
+    if (idx[x.mes] == null) return;
+    if (x.estado === 'Real') out[idx[x.mes]].gastos_real += x.monto;
+    else out[idx[x.mes]].gastos_proy += x.monto;
+  });
+  DB.pagos_tarjeta.forEach(x => {
+    if (idx[x.mes] == null) return;
+    if (x.estado === 'Real') out[idx[x.mes]].pago_tarj_real += x.monto;
+    else out[idx[x.mes]].pago_tarj_proy += x.monto;
+  });
+  DB.consumos_tarjeta.forEach(x => {
+    if (idx[x.mes_resumen] == null) return;
+    out[idx[x.mes_resumen]].consumo_tarjeta += x.monto;
+  });
+  out.forEach(o => {
+    o.ingresos_total = o.ingresos_real + o.ingresos_proy;
+    o.egresos_caja_real = o.gastos_real + o.pago_tarj_real;
+    o.egresos_caja_total = o.gastos_real + o.gastos_proy + o.pago_tarj_real + o.pago_tarj_proy;
+    o.resultado_real = o.ingresos_real - o.egresos_caja_real;
+    o.resultado_esc = o.ingresos_total - o.egresos_caja_total;
+  });
+  return out;
+}
+
+function categoryRollup(mes) {
+  const cats = Object.keys(DB.config.objetivos_categoria || {});
+  const map = {};
+  cats.forEach(c => map[c] = { categoria: c, real: 0, proy: 0, tarjeta: 0, objetivo: DB.config.objetivos_categoria[c] || 0 });
+  DB.gastos.forEach(g => {
+    if (g.mes !== mes) return;
+    const k = map[g.categoria] || (map[g.categoria] = { categoria: g.categoria, real:0, proy:0, tarjeta:0, objetivo:0 });
+    if (g.estado === 'Real') k.real += g.monto; else k.proy += g.monto;
+  });
+  DB.consumos_tarjeta.forEach(c => {
+    if (c.mes_resumen !== mes) return;
+    const k = map[c.categoria] || (map[c.categoria] = { categoria: c.categoria, real:0, proy:0, tarjeta:0, objetivo:0 });
+    k.tarjeta += c.monto;
+  });
+  const arr = Object.values(map);
+  arr.forEach(o => {
+    o.total = o.real + o.proy + o.tarjeta;
+    o.uso = o.objetivo > 0 ? o.total / o.objetivo : 0;
+    if (o.uso === 0) o.semaforo = 'ok';
+    else if (o.uso < 0.85) o.semaforo = 'ok';
+    else if (o.uso <= 1.0) o.semaforo = 'warn';
+    else o.semaforo = 'bad';
+  });
+  return arr.sort((a,b) => b.total - a.total);
+}
+
+/* =================================================================== */
+/* INVERSIONES                                                          */
+/* =================================================================== */
+function invToARS(x) {
+  const tc = DB.config.tc_usd || 1;
+  return x.moneda === 'USD' ? x.monto * (x.tc || tc) : x.monto;
+}
+
+// Calcula serie por cuenta: para cada destino, ordena cronológicamente y construye snapshots de saldo + rendimiento por período
+function invByCuenta() {
+  const cuentas = {};
+  DB.inversiones.forEach(x => {
+    if (!cuentas[x.destino]) cuentas[x.destino] = { destino: x.destino, movs: [] };
+    cuentas[x.destino].movs.push(x);
+  });
+  Object.values(cuentas).forEach(c => {
+    c.movs.sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
+    let saldo = 0;
+    let aportesNetosAcum = 0;
+    let aportesDesdeUltimaActu = 0;
+    let saldoUltimaActu = null;
+    let fechaUltimaActu = null;
+    c.snapshots = [];
+    c.movs.forEach(m => {
+      const arsEq = invToARS(m);
+      if (m.tipo === 'aporte') {
+        saldo += arsEq;
+        aportesNetosAcum += arsEq;
+        aportesDesdeUltimaActu += arsEq;
+        c.snapshots.push({ fecha: m.fecha, saldo, kind: 'mov', tipo: 'aporte', monto: arsEq });
+      } else if (m.tipo === 'desarme') {
+        saldo -= arsEq;
+        aportesNetosAcum -= arsEq;
+        aportesDesdeUltimaActu -= arsEq;
+        c.snapshots.push({ fecha: m.fecha, saldo, kind: 'mov', tipo: 'desarme', monto: arsEq });
+      } else if (m.tipo === 'actualizacion') {
+        // Rendimiento del período = saldo nuevo - saldo previo - aportes_desde_ultima_actu
+        const saldoPrevio = saldoUltimaActu != null ? saldoUltimaActu : (saldo - aportesDesdeUltimaActu);
+        const rendimiento = arsEq - saldoPrevio - aportesDesdeUltimaActu;
+        const baseRetorno = saldoPrevio + aportesDesdeUltimaActu;
+        const tasaPct = baseRetorno > 0 ? (rendimiento / baseRetorno) : 0;
+        saldo = arsEq;
+        c.snapshots.push({
+          fecha: m.fecha,
+          saldo: arsEq,
+          kind: 'actu',
+          rendimiento,
+          aportesPeriodo: aportesDesdeUltimaActu,
+          tasaPct,
+          fechaPrev: fechaUltimaActu
+        });
+        saldoUltimaActu = arsEq;
+        fechaUltimaActu = m.fecha;
+        aportesDesdeUltimaActu = 0;
+      }
+    });
+    c.saldoActual = saldo;
+    c.aportesNetos = aportesNetosAcum;
+    c.tieneActualizacion = saldoUltimaActu != null;
+    c.ultimaActuFecha = fechaUltimaActu;
+    c.rendTotal = c.tieneActualizacion ? (saldo - aportesNetosAcum) : 0;
+    // Última actualización
+    const lastActu = [...c.snapshots].reverse().find(s => s.kind === 'actu');
+    c.ultimoRendimiento = lastActu ? lastActu.rendimiento : 0;
+    c.ultimaTasa = lastActu ? lastActu.tasaPct : null;
+    c.ultimoBase = lastActu ? (lastActu.saldo - lastActu.rendimiento) : null;
+  });
+  return Object.values(cuentas).sort((a,b) => b.saldoActual - a.saldoActual);
+}
+
+function invSummary() {
+  const cuentas = invByCuenta();
+  const out = {
+    totalARS: 0, aportesNetos: 0, rendTotal: 0,
+    totalUSD: 0, totalUSDeq: 0,
+    byDestino: {}, cuentas
+  };
+  cuentas.forEach(c => {
+    out.totalARS += c.saldoActual;
+    out.aportesNetos += c.aportesNetos;
+    out.rendTotal += c.rendTotal;
+    out.byDestino[c.destino] = { destino: c.destino, ars: c.saldoActual, usd: 0 };
+  });
+  // USD totales (solo movimientos en USD, sin tener en cuenta actualizaciones que están en ARS)
+  DB.inversiones.forEach(x => {
+    if (x.moneda !== 'USD' || x.tipo === 'actualizacion') return;
+    const sign = x.tipo === 'desarme' ? -1 : 1;
+    out.totalUSD += sign * x.monto;
+  });
+  out.totalUSDeq = out.totalUSD * (DB.config.tc_usd || 1);
+  return out;
+}
+
+/* =================================================================== */
+/* RENDERS                                                              */
+/* =================================================================== */
+function renderMesPills() {
+  const wrap = document.getElementById('mesPills');
+  const meses = getAllMeses();
+  if (!selectedMes && meses.length) selectedMes = meses[0];
+  wrap.innerHTML = meses.map(m => `<button class="${m===selectedMes?'active':''}" onclick="selectMes('${m}')">${mesLabel(m)}</button>`).join('');
+}
+
+function selectMes(m) { selectedMes = m; renderAll(); }
+
+function renderKPIs() {
+  const wrap = document.getElementById('kpiGrid');
+  const sm = summaryByMonth();
+  const cur = sm.find(x => x.mes === selectedMes) || { ingresos_real:0, egresos_caja_real:0, resultado_real:0, consumo_tarjeta:0 };
+  const totalIng120 = sm.reduce((a,b) => a + b.ingresos_total, 0);
+  const totalEgr120 = sm.reduce((a,b) => a + b.egresos_caja_total, 0);
+  const ahorroFinal = totalIng120 - totalEgr120 + (DB.config.saldo_inicial||0) - (DB.config.saldo_inicial||0); // delta
+  const dailyCash = buildDailyCash();
+  const finalEsc = dailyCash.length ? dailyCash[dailyCash.length-1].saldo_esc : DB.config.saldo_inicial;
+  const objetivoTar = DB.config.objetivo_tarjeta || 1000000;
+  const usoTar = objetivoTar > 0 ? cur.consumo_tarjeta / objetivoTar : 0;
+  let semaforoTxt, semClass;
+  if (usoTar === 0) { semaforoTxt = '— Sin datos'; semClass = ''; }
+  else if (usoTar < (DB.config.alerta_tarjeta||0.85)) { semaforoTxt = '🟢 En meta'; semClass = 'ok'; }
+  else if (usoTar <= 1) { semaforoTxt = '🟡 Cerca del tope'; semClass = 'warn'; }
+  else { semaforoTxt = '🔴 Excedido'; semClass = 'bad'; }
+
+  wrap.innerHTML = `
+    <div class="kpi accent"><div class="lbl">Caja final escenario 120d</div><div class="val num">${fmtARS(finalEsc)}</div><div class="hint">Saldo proyectado al cierre del horizonte</div></div>
+    <div class="kpi"><div class="lbl">Ingresos mes (real)</div><div class="val num">${fmtARS(cur.ingresos_real)}</div><div class="hint">Solo cobrado</div></div>
+    <div class="kpi"><div class="lbl">Egresos caja mes</div><div class="val num">${fmtARS(cur.egresos_caja_real)}</div><div class="hint">Directos + pago tarjeta</div></div>
+    <div class="kpi ${cur.resultado_real >= 0 ? 'ok' : 'bad'}"><div class="lbl">Resultado mes</div><div class="val num">${fmtARS(cur.resultado_real)}</div><div class="hint">Ingresos − egresos</div></div>
+    <div class="kpi ${semClass}"><div class="lbl">Tarjeta vs meta $1M</div><div class="val num">${fmtARS(cur.consumo_tarjeta)}</div><div class="hint">${semaforoTxt} · ${fmtPct(usoTar)}</div></div>
+  `;
+}
+
+function renderTblCategorias() {
+  const arr = categoryRollup(selectedMes);
+  const tbl = document.getElementById('tblCategorias');
+  tbl.innerHTML = `
+    <thead><tr>
+      <th>Categoría</th>
+      <th class="num">Total</th>
+      <th class="num">Objetivo</th>
+      <th>Uso</th>
+      <th>Estado</th>
+    </tr></thead>
+    <tbody>${arr.filter(x => x.total > 0 || x.objetivo > 0).map(c => {
+      const pct = c.objetivo > 0 ? Math.min(c.uso, 1.5) : 0;
+      const barColor = c.semaforo === 'bad' ? 'var(--bad)' : c.semaforo === 'warn' ? 'var(--warn)' : 'var(--ok)';
+      return `<tr>
+        <td>${c.categoria}</td>
+        <td class="num">${fmtARS(c.total)}</td>
+        <td class="num" style="color:var(--txt-2)">${fmtARS(c.objetivo)}</td>
+        <td><div class="progress"><div style="width:${Math.min(pct*100,100)}%; background:${barColor};"></div></div><div style="font-size:11px;color:var(--txt-2);margin-top:2px;">${fmtPct(c.uso)}</div></td>
+        <td><span class="traffic ${c.semaforo}"><span class="dot"></span>${c.semaforo === 'bad' ? 'Excedido' : c.semaforo === 'warn' ? 'Cuidar' : 'OK'}</span></td>
+      </tr>`;
+    }).join('')}</tbody>`;
+}
+
+function renderTblIngresos() {
+  const tbl = document.getElementById('tblIngresos');
+  const ord = [...DB.ingresos].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+  tbl.innerHTML = `<thead><tr><th>Fecha</th><th>Origen</th><th>Estado</th><th class="num">Monto</th><th>Notas</th><th></th></tr></thead><tbody>${ord.map(x => `
+    <tr>
+      <td class="num">${x.fecha||''}</td>
+      <td>${x.origen}</td>
+      <td><span class="badge ${x.estado==='Real'?'real':'proy'}">${x.estado}</span></td>
+      <td class="num">${fmtARS(x.monto)}</td>
+      <td style="color:var(--txt-2); font-size:12px;">${x.notas||''}</td>
+      <td>
+        <button class="btn ghost sm" onclick="toggleEstadoIngreso('${x.id}')">${x.estado==='Real'?'→ Proy':'→ Real'}</button>
+        <button class="btn danger sm" onclick="deleteIngreso('${x.id}')">×</button>
+      </td>
+    </tr>`).join('')}</tbody>`;
+}
+
+function renderGastos() {
+  const tbl = document.getElementById('tblGastos');
+  const filtMes = document.getElementById('gas-filtro-mes').value;
+  const filtCat = document.getElementById('gas-filtro-cat').value;
+  let arr = [...DB.gastos];
+  if (filtMes) arr = arr.filter(x => x.mes === filtMes);
+  if (filtCat) arr = arr.filter(x => x.categoria === filtCat);
+  arr.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+  const total = arr.reduce((s,x) => s + x.monto, 0);
+  tbl.innerHTML = `<thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Medio</th><th>Estado</th><th class="num">Monto</th><th></th></tr></thead><tbody>${arr.map(x => `
+    <tr>
+      <td class="num">${x.fecha||''}</td>
+      <td><span class="badge cat">${x.categoria}</span></td>
+      <td>${x.descripcion||''}</td>
+      <td style="font-size:12px;color:var(--txt-2);">${x.medio||''}</td>
+      <td><span class="badge ${x.estado==='Real'?'real':'proy'}">${x.estado}</span></td>
+      <td class="num">${fmtARS(x.monto)}</td>
+      <td>
+        <button class="btn ghost sm" onclick="editGasto('${x.id}')" title="Editar">✎</button>
+        <button class="btn ghost sm" onclick="toggleEstadoGasto('${x.id}')">${x.estado==='Real'?'P':'R'}</button>
+        <button class="btn danger sm" onclick="deleteGasto('${x.id}')">×</button>
+      </td>
+    </tr>`).join('')}<tr><td colspan="5" style="font-weight:700;">TOTAL ${arr.length} ítems</td><td class="num" style="font-weight:700;">${fmtARS(total)}</td><td></td></tr></tbody>`;
+}
+
+let soloRecortar = false;
+function toggleSoloRecortar() {
+  soloRecortar = !soloRecortar;
+  document.getElementById('btnSoloRecortar').textContent = soloRecortar ? 'Mostrar todos' : 'Mostrar solo "revisar"';
+  renderConsumos();
+}
+
+function renderConsumos() {
+  const tbl = document.getElementById('tblConsumos');
+  const filt = document.getElementById('tar-filtro-mes').value;
+  let arr = [...DB.consumos_tarjeta];
+  if (filt) arr = arr.filter(x => x.mes_resumen === filt);
+  if (soloRecortar) arr = arr.filter(x => x.recortar);
+  arr.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+  const total = arr.reduce((s,x) => s + x.monto, 0);
+  tbl.innerHTML = `<thead><tr><th>Fecha</th><th>Comercio</th><th>Categoría</th><th>Tipo</th><th class="num">Monto</th><th>Recortar</th><th></th></tr></thead><tbody>${arr.map(x => `
+    <tr>
+      <td class="num">${x.fecha||''}</td>
+      <td>${x.comercio||''} <span style="color:var(--txt-3); font-size:11px;">${x.nota?' · '+x.nota:''}</span></td>
+      <td><span class="badge cat">${x.categoria}</span></td>
+      <td style="font-size:12px;color:var(--txt-2);">${x.tipo||''}</td>
+      <td class="num">${fmtARS(x.monto)}</td>
+      <td>${x.recortar?'<span class="traffic warn"><span class="dot"></span>Revisar</span>':'<span style="color:var(--txt-3);">—</span>'}</td>
+      <td>
+        <button class="btn ghost sm" onclick="toggleRecortar('${x.id}')">${x.recortar?'OK':'⚑'}</button>
+        <button class="btn danger sm" onclick="deleteConsumo('${x.id}')">×</button>
+      </td>
+    </tr>`).join('')}<tr><td colspan="4" style="font-weight:700;">TOTAL ${arr.length} consumos</td><td class="num" style="font-weight:700;">${fmtARS(total)}</td><td colspan="2"></td></tr></tbody>`;
+}
+
+function renderPagosTarjeta() {
+  const tbl = document.getElementById('tblPagosTarjeta');
+  const ord = [...DB.pagos_tarjeta].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+  tbl.innerHTML = `<thead><tr><th>Fecha</th><th>Período</th><th>Tarjeta</th><th>Estado</th><th class="num">Monto</th><th></th></tr></thead><tbody>${ord.map(x => `
+    <tr>
+      <td class="num">${x.fecha||''}</td>
+      <td>${x.resumen||''}</td>
+      <td>${x.tarjeta||''}</td>
+      <td><span class="badge ${x.estado==='Real'?'real':'proy'}">${x.estado}</span></td>
+      <td class="num">${fmtARS(x.monto)}</td>
+      <td><button class="btn danger sm" onclick="deletePagoTarj('${x.id}')">×</button></td>
+    </tr>`).join('')}</tbody>`;
+}
+
+function renderInversiones() {
+  const sum = invSummary();
+  const cuentas = sum.cuentas;
+
+  // KPIs
+  const totalAportes = DB.inversiones.filter(x => x.tipo === 'aporte').reduce((s,x) => s + invToARS(x), 0);
+  const totalDesarmes = DB.inversiones.filter(x => x.tipo === 'desarme').reduce((s,x) => s + invToARS(x), 0);
+  const numActu = DB.inversiones.filter(x => x.tipo === 'actualizacion').length;
+  document.getElementById('invKpis').innerHTML = `
+    <div class="kpi accent"><div class="lbl">Saldo actual (ARS eq.)</div><div class="val num">${fmtARS(sum.totalARS)}</div><div class="hint">${cuentas.length} cuentas · USD al TC ${DB.config.tc_usd}</div></div>
+    <div class="kpi"><div class="lbl">Aportes acumulados</div><div class="val num">${fmtARS(totalAportes)}</div></div>
+    <div class="kpi"><div class="lbl">Desarmes</div><div class="val num">${fmtARS(totalDesarmes)}</div></div>
+    <div class="kpi ${sum.rendTotal>=0?'ok':'bad'}"><div class="lbl">Rendimiento total acum.</div><div class="val num">${fmtARS(sum.rendTotal)}</div><div class="hint">Saldo − aportes netos</div></div>
+    <div class="kpi"><div class="lbl">USD totales</div><div class="val num">USD ${fmtCompact(sum.totalUSD)}</div><div class="hint">≈ ${fmtARS(sum.totalUSDeq)}</div></div>
+  `;
+
+  // Tabla por cuenta
+  const tblc = document.getElementById('tblPorCuenta');
+  if (tblc) {
+    tblc.innerHTML = `<thead><tr>
+      <th>Cuenta</th>
+      <th class="num">Saldo actual</th>
+      <th class="num">Aportes netos</th>
+      <th class="num">Rend. total</th>
+      <th class="num">Último rendimiento</th>
+      <th class="num">Tasa último período</th>
+      <th>Última actualización</th>
+    </tr></thead><tbody>${cuentas.map(c => {
+      const tasaCol = c.ultimaTasa == null ? '<span style="color:var(--txt-3)">—</span>' :
+        `<span style="color:${c.ultimaTasa>=0?'var(--ok)':'var(--bad)'}">${(c.ultimaTasa*100).toFixed(2)}%</span>`;
+      const rendCol = c.tieneActualizacion ? `<span style="color:${c.rendTotal>=0?'var(--ok)':'var(--bad)'}">${fmtARS(c.rendTotal)}</span>` : '<span style="color:var(--txt-3)">sin actualización</span>';
+      return `<tr>
+        <td><strong>${c.destino}</strong></td>
+        <td class="num">${fmtARS(c.saldoActual)}</td>
+        <td class="num" style="color:var(--txt-2)">${fmtARS(c.aportesNetos)}</td>
+        <td class="num">${rendCol}</td>
+        <td class="num">${c.ultimoRendimiento ? `<span style="color:${c.ultimoRendimiento>=0?'var(--ok)':'var(--bad)'}">${fmtARS(c.ultimoRendimiento)}</span>` : '<span style="color:var(--txt-3)">—</span>'}</td>
+        <td class="num">${tasaCol}</td>
+        <td style="font-size:12px;color:var(--txt-2)">${c.ultimaActuFecha || '—'}</td>
+      </tr>`;
+    }).join('')}</tbody>`;
+  }
+
+  // Tabla historial filtrable
+  const tbl = document.getElementById('tblInversiones');
+  const fDest = document.getElementById('inv-filtro-destino');
+  const fTipo = document.getElementById('inv-filtro-tipo');
+  if (fDest) {
+    const destinos = [...new Set(DB.inversiones.map(x => x.destino))].sort();
+    fDest.innerHTML = '<option value="">Todas las cuentas</option>' + destinos.map(d => `<option ${fDest.value===d?'selected':''}>${d}</option>`).join('');
+  }
+  let arr = [...DB.inversiones];
+  if (fDest && fDest.value) arr = arr.filter(x => x.destino === fDest.value);
+  if (fTipo && fTipo.value) arr = arr.filter(x => x.tipo === fTipo.value);
+  arr.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+
+  const tipoBadge = t => {
+    if (t === 'aporte') return '<span class="badge real">Aporte</span>';
+    if (t === 'desarme') return '<span class="badge proy">Desarme</span>';
+    return '<span class="badge tarj">Actualización</span>';
+  };
+  if (tbl) {
+    tbl.innerHTML = `<thead><tr><th>Fecha</th><th>Destino</th><th>Tipo</th><th>Moneda</th><th class="num">Monto</th><th class="num">ARS eq.</th><th></th></tr></thead><tbody>${arr.map(x => `
+      <tr>
+        <td class="num">${x.fecha||''}</td>
+        <td>${x.destino}</td>
+        <td>${tipoBadge(x.tipo)}</td>
+        <td>${x.moneda}</td>
+        <td class="num">${x.moneda} ${fmtCompact(x.monto)}</td>
+        <td class="num">${fmtARS(invToARS(x))}</td>
+        <td><button class="btn danger sm" onclick="deleteInversion('${x.id}')">×</button></td>
+      </tr>`).join('')}</tbody>`;
+  }
+
+  // Datalist destinos para autocomplete
+  const dl = document.getElementById('destinos-list');
+  if (dl) {
+    const destinos = [...new Set(DB.inversiones.map(x => x.destino))].sort();
+    dl.innerHTML = destinos.map(d => `<option value="${d}">`).join('');
+  }
+}
+
+function renderResumenMensual() {
+  const sm = summaryByMonth();
+  const tbl = document.getElementById('tblResumenMensual');
+  tbl.innerHTML = `<thead><tr><th>Mes</th><th class="num">Ing. real</th><th class="num">Ing. proy</th><th class="num">Egresos esc.</th><th class="num">Resultado esc.</th><th class="num">Tarjeta</th><th>Semáforo</th></tr></thead><tbody>${sm.map(s => {
+    const obj = DB.config.objetivo_tarjeta || 1000000;
+    const uso = s.consumo_tarjeta / obj;
+    const sem = s.consumo_tarjeta === 0 ? 'ok' : uso < 0.85 ? 'ok' : uso <= 1 ? 'warn' : 'bad';
+    return `<tr>
+      <td>${mesLabel(s.mes)}</td>
+      <td class="num">${fmtARS(s.ingresos_real)}</td>
+      <td class="num" style="color:var(--txt-3)">${fmtARS(s.ingresos_proy)}</td>
+      <td class="num">${fmtARS(s.egresos_caja_total)}</td>
+      <td class="num" style="color:${s.resultado_esc>=0?'var(--ok)':'var(--bad)'}">${fmtARS(s.resultado_esc)}</td>
+      <td class="num">${fmtARS(s.consumo_tarjeta)}</td>
+      <td><span class="traffic ${sem}"><span class="dot"></span>${fmtPct(uso)}</span></td>
+    </tr>`;
+  }).join('')}</tbody>`;
+}
+
+function fillCategoriaSelectors() {
+  const cats = Object.keys(DB.config.objetivos_categoria || {}).sort();
+  const optsHTML = cats.map(c => `<option>${c}</option>`).join('');
+  ['gas-categoria', 'tar-categoria'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = optsHTML;
+  });
+  // filtros
+  const fcat = document.getElementById('gas-filtro-cat');
+  if (fcat) fcat.innerHTML = '<option value="">Todas las categorías</option>' + optsHTML;
+}
+
+function fillMesSelectors() {
+  const meses = getAllMeses();
+  ['gas-filtro-mes', 'tar-filtro-mes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = '<option value="">Todos los meses</option>' + meses.map(m => `<option value="${m}">${mesLabel(m)}</option>`).join('');
+  });
+}
+
+function renderConfig() {
+  document.getElementById('cfg-saldo').value = DB.config.saldo_inicial || 0;
+  document.getElementById('cfg-objtar').value = DB.config.objetivo_tarjeta || 0;
+  document.getElementById('cfg-alerta').value = DB.config.alerta_tarjeta || 0.85;
+  document.getElementById('cfg-tc').value = DB.config.tc_usd || 1000;
+  const grid = document.getElementById('cfgCatGrid');
+  const cats = Object.keys(DB.config.objetivos_categoria || {}).sort();
+  grid.innerHTML = cats.map(c => `
+    <div class="field"><label>${c}</label><input type="number" value="${DB.config.objetivos_categoria[c]||0}" data-cat="${c}"></div>
+  `).join('');
+}
+
+/* =================================================================== */
+/* CHARTS                                                               */
+/* =================================================================== */
+const CHART_DEFAULT = {
+  scales: {
+    x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9aa3ad', font: { family: "JetBrains Mono", size: 10 } } },
+    y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9aa3ad', font: { family: "JetBrains Mono", size: 10 }, callback: v => fmtCompact(v) } }
+  },
+  plugins: { legend: { labels: { color: '#e9ecef', font: { family: "Inter Tight", size: 12 } } } }
+};
+
+let charts = {};
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+function renderCharts() {
+  const dc = buildDailyCash();
+  const sm = summaryByMonth();
+
+  // CAJA
+  destroyChart('chCaja');
+  const ctx1 = document.getElementById('chCaja').getContext('2d');
+  charts.chCaja = new Chart(ctx1, {
+    type: 'line',
+    data: {
+      labels: dc.map(d => d.fecha),
+      datasets: [
+        { label: 'Caja real', data: dc.map(d => d.saldo_real), borderColor: '#d4ff3a', backgroundColor: 'rgba(212,255,58,0.08)', fill: true, tension: 0.2, pointRadius: 0, borderWidth: 2 },
+        { label: 'Caja escenario (real+proy)', data: dc.map(d => d.saldo_esc), borderColor: '#7dd3a3', borderDash: [4,4], fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2 }
+      ]
+    },
+    options: { ...CHART_DEFAULT, responsive: true, maintainAspectRatio: false, scales: { ...CHART_DEFAULT.scales, x: { ...CHART_DEFAULT.scales.x, ticks: { ...CHART_DEFAULT.scales.x.ticks, maxTicksLimit: 8 } } } }
+  });
+
+  // TARJETA vs OBJETIVO
+  destroyChart('chTarjeta');
+  const obj = DB.config.objetivo_tarjeta || 1000000;
+  const ctx2 = document.getElementById('chTarjeta').getContext('2d');
+  charts.chTarjeta = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: sm.map(s => mesLabel(s.mes)),
+      datasets: [
+        { label: 'Consumo tarjeta', data: sm.map(s => s.consumo_tarjeta), backgroundColor: sm.map(s => {
+          const uso = s.consumo_tarjeta / obj;
+          if (s.consumo_tarjeta === 0) return '#323942';
+          if (uso < 0.85) return '#4ade80';
+          if (uso <= 1) return '#ffb547';
+          return '#ff5d5d';
+        }), borderRadius: 6 },
+        { label: 'Objetivo $1M', type: 'line', data: sm.map(_ => obj), borderColor: '#d4ff3a', borderDash: [6,6], borderWidth: 2, pointRadius: 0, fill: false }
+      ]
+    },
+    options: { ...CHART_DEFAULT, responsive: true, maintainAspectRatio: false }
+  });
+
+  // DONUT mes seleccionado
+  destroyChart('chDonut');
+  const cr = categoryRollup(selectedMes).filter(x => x.total > 0);
+  const ctx3 = document.getElementById('chDonut').getContext('2d');
+  const palette = ['#d4ff3a','#7dd3a3','#6cb6ff','#ffb547','#ff5d5d','#c084fc','#fb923c','#34d399','#f472b6','#60a5fa','#fbbf24','#a3e635','#22d3ee','#facc15','#e879f9','#94a3b8','#fda4af'];
+  charts.chDonut = new Chart(ctx3, {
+    type: 'doughnut',
+    data: { labels: cr.map(c => c.categoria), datasets: [{ data: cr.map(c => c.total), backgroundColor: cr.map((_,i) => palette[i % palette.length]), borderColor: '#14171a', borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#e9ecef', font: { family: "Inter Tight", size: 11 }, boxWidth: 10 } }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + fmtARS(ctx.raw) } } }, cutout: '60%' }
+  });
+
+  // AHORRO 3M y FIN DE AÑO
+  destroyChart('chAhorro');
+  const cerrados = sm.filter(s => s.ingresos_real > 0 && s.gastos_real > 0);
+  const ahorroProm = cerrados.length ? cerrados.reduce((a,b) => a + (b.ingresos_real - b.egresos_caja_real), 0) / cerrados.length : 0;
+  const lastDc = dc[dc.length-1] ? dc[dc.length-1].saldo_esc : (DB.config.saldo_inicial||0);
+  const today = new Date();
+  const dec31 = new Date(today.getFullYear(), 11, 31);
+  const lastDate = dc[dc.length-1] ? new Date(dc[dc.length-1].fecha) : today;
+  const monthsToYearEnd = Math.max(0, (dec31.getFullYear()-lastDate.getFullYear())*12 + (dec31.getMonth()-lastDate.getMonth()));
+  const labels3 = ['Hoy', '+1m', '+2m', '+3m'];
+  const ahorro3 = [DB.config.saldo_inicial||0,
+    (DB.config.saldo_inicial||0) + ahorroProm,
+    (DB.config.saldo_inicial||0) + 2*ahorroProm,
+    (DB.config.saldo_inicial||0) + 3*ahorroProm];
+  const labelsYE = [];
+  const ahorroYE = [];
+  for (let i = 0; i <= monthsToYearEnd; i++) {
+    labelsYE.push('+' + i + 'm');
+    ahorroYE.push(lastDc + i * ahorroProm);
+  }
+  const ctx4 = document.getElementById('chAhorro').getContext('2d');
+  charts.chAhorro = new Chart(ctx4, {
+    type: 'line',
+    data: {
+      labels: labelsYE.length > labels3.length ? labelsYE : labels3,
+      datasets: [
+        { label: '3 meses (proy.)', data: ahorro3, borderColor: '#d4ff3a', backgroundColor: 'rgba(212,255,58,0.1)', tension: 0.3, fill: true, pointRadius: 4 },
+        { label: 'Hasta dic ' + dec31.getFullYear(), data: ahorroYE, borderColor: '#6cb6ff', borderDash: [4,4], tension: 0.3, fill: false, pointRadius: 3 }
+      ]
+    },
+    options: { ...CHART_DEFAULT, responsive: true, maintainAspectRatio: false }
+  });
+
+  // INVERSIONES composición
+  destroyChart('chInv');
+  const sumInv = invSummary();
+  const destinos = Object.values(sumInv.byDestino).map(d => ({ destino: d.destino, ars: d.ars + d.usd * (DB.config.tc_usd||1) })).filter(d => d.ars > 0);
+  const ctx5 = document.getElementById('chInv').getContext('2d');
+  if (destinos.length === 0) {
+    document.getElementById('chInv').parentElement.innerHTML = '<div class="empty">No hay inversiones cargadas todavía.</div>';
+  } else {
+    charts.chInv = new Chart(ctx5, {
+      type: 'doughnut',
+      data: { labels: destinos.map(d => d.destino), datasets: [{ data: destinos.map(d => d.ars), backgroundColor: destinos.map((_,i) => palette[i % palette.length]), borderColor: '#14171a', borderWidth: 2 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#e9ecef', font: { family: "Inter Tight", size: 11 }, boxWidth: 10 } }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + fmtARS(ctx.raw) } } }, cutout: '60%' }
+    });
+  }
+}
+
+function renderProyeccionPage() {
+  const sm = summaryByMonth();
+  const cerrados = sm.filter(s => s.ingresos_real > 0 && s.gastos_real > 0);
+  const ahorroProm = cerrados.length ? cerrados.reduce((a,b) => a + (b.ingresos_real - b.egresos_caja_real), 0) / cerrados.length : 0;
+  const dc = buildDailyCash();
+  const last = dc.length ? dc[dc.length-1].saldo_esc : (DB.config.saldo_inicial||0);
+  const today = new Date();
+  const dec31 = new Date(today.getFullYear(), 11, 31);
+  const lastDate = dc.length ? new Date(dc[dc.length-1].fecha) : today;
+  const monthsLeft = Math.max(0, (dec31.getFullYear()-lastDate.getFullYear())*12 + (dec31.getMonth()-lastDate.getMonth()));
+  const proy3 = last + 3 * ahorroProm;
+  const proyYE = last + monthsLeft * ahorroProm;
+  document.getElementById('proy-kpis').innerHTML = `
+    <div class="kpi"><div class="lbl">Ahorro mensual promedio</div><div class="val num">${fmtARS(ahorroProm)}</div><div class="hint">Promedio de ${cerrados.length} meses cerrados</div></div>
+    <div class="kpi accent"><div class="lbl">Proyección a 3 meses</div><div class="val num">${fmtARS(proy3)}</div><div class="hint">Caja final escenario + 3 meses de ahorro</div></div>
+    <div class="kpi"><div class="lbl">Proyección a fin de año</div><div class="val num">${fmtARS(proyYE)}</div><div class="hint">${monthsLeft} meses al 31/dic</div></div>
+    <div class="kpi"><div class="lbl">Caja final escenario</div><div class="val num">${fmtARS(last)}</div><div class="hint">Cierre de los 120 días</div></div>
+    <div class="kpi"><div class="lbl">Inversiones</div><div class="val num">${fmtARS(invSummary().totalARS)}</div><div class="hint">No incluido en caja</div></div>
+  `;
+  // Chart anual
+  destroyChart('chProyAnual');
+  const labels = ['Hoy'];
+  const data = [last];
+  for (let i = 1; i <= Math.max(monthsLeft, 6); i++) {
+    const d = new Date(lastDate); d.setMonth(d.getMonth() + i);
+    labels.push(MESES_NOMBRE[d.getMonth()] + ' ' + d.getFullYear().toString().slice(2));
+    data.push(last + i * ahorroProm);
+  }
+  const ctx = document.getElementById('chProyAnual').getContext('2d');
+  charts.chProyAnual = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [{ label: 'Caja proyectada', data, borderColor: '#d4ff3a', backgroundColor: 'rgba(212,255,58,0.1)', fill: true, tension: 0.25, pointRadius: 4 }] },
+    options: { ...CHART_DEFAULT, responsive: true, maintainAspectRatio: false }
+  });
+
+  // Caja diaria detalle
+  destroyChart('chCajaDetalle');
+  const ctxd = document.getElementById('chCajaDetalle').getContext('2d');
+  charts.chCajaDetalle = new Chart(ctxd, {
+    type: 'line',
+    data: {
+      labels: dc.map(d => d.fecha),
+      datasets: [
+        { label: 'Caja real', data: dc.map(d => d.saldo_real), borderColor: '#d4ff3a', backgroundColor: 'rgba(212,255,58,0.08)', fill: true, tension: 0.15, pointRadius: 0, borderWidth: 2 },
+        { label: 'Caja escenario', data: dc.map(d => d.saldo_esc), borderColor: '#7dd3a3', tension: 0.15, pointRadius: 0, borderWidth: 1.5, fill: false }
+      ]
+    },
+    options: { ...CHART_DEFAULT, responsive: true, maintainAspectRatio: false, scales: { ...CHART_DEFAULT.scales, x: { ...CHART_DEFAULT.scales.x, ticks: { ...CHART_DEFAULT.scales.x.ticks, maxTicksLimit: 12 } } } }
+  });
+}
+
+function renderInvCharts() {
+  const palette = ['#d4ff3a','#7dd3a3','#6cb6ff','#ffb547','#ff5d5d','#c084fc','#fb923c','#34d399','#f472b6','#60a5fa','#fbbf24','#a3e635'];
+  const sum = invSummary();
+  const cuentas = sum.cuentas;
+
+  // Composición pie: saldo actual por cuenta
+  destroyChart('chInvComposicion');
+  const conSaldo = cuentas.filter(c => c.saldoActual > 0);
+  if (conSaldo.length > 0) {
+    const ctx = document.getElementById('chInvComposicion').getContext('2d');
+    charts.chInvComposicion = new Chart(ctx, {
+      type: 'pie',
+      data: { labels: conSaldo.map(c => c.destino), datasets: [{ data: conSaldo.map(c => c.saldoActual), backgroundColor: conSaldo.map((_,i) => palette[i % palette.length]), borderColor: '#14171a', borderWidth: 2 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#e9ecef', font: { family: "Inter Tight", size: 11 } } }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + fmtARS(ctx.raw) + ' (' + ((ctx.raw/sum.totalARS)*100).toFixed(1) + '%)' } } } }
+    });
+  }
+
+  // Evolución de saldos por cuenta (multi-línea)
+  destroyChart('chInvEvol');
+  const fechas = [...new Set(DB.inversiones.map(x => x.fecha).filter(Boolean))].sort();
+  if (fechas.length > 0) {
+    const datasets = cuentas.map((c, i) => {
+      const data = fechas.map(f => {
+        // saldo en la cuenta a esa fecha
+        let saldo = 0;
+        let tieneActu = false;
+        c.movs.forEach(m => {
+          if (m.fecha > f) return;
+          const arsEq = invToARS(m);
+          if (m.tipo === 'aporte') saldo += arsEq;
+          else if (m.tipo === 'desarme') saldo -= arsEq;
+          else if (m.tipo === 'actualizacion') { saldo = arsEq; tieneActu = true; }
+        });
+        return saldo > 0 ? saldo : null;
+      });
+      return {
+        label: c.destino,
+        data,
+        borderColor: palette[i % palette.length],
+        backgroundColor: palette[i % palette.length] + '20',
+        tension: 0.2,
+        pointRadius: 3,
+        borderWidth: 2,
+        spanGaps: true
+      };
+    });
+    const ctxe = document.getElementById('chInvEvol').getContext('2d');
+    charts.chInvEvol = new Chart(ctxe, {
+      type: 'line',
+      data: { labels: fechas, datasets },
+      options: { ...CHART_DEFAULT, responsive: true, maintainAspectRatio: false, plugins: { ...CHART_DEFAULT.plugins, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmtARS(ctx.raw) } } } }
+    });
+  }
+
+  // Rendimiento mensual por cuenta (barras agrupadas)
+  destroyChart('chInvRend');
+  const cuentasConActu = cuentas.filter(c => c.tieneActualizacion);
+  if (cuentasConActu.length > 0) {
+    // Agrupar rendimientos por mes (YYYY-MM)
+    const mesesSet = new Set();
+    cuentasConActu.forEach(c => c.snapshots.forEach(s => { if (s.kind === 'actu') mesesSet.add((s.fecha||'').slice(0,7)); }));
+    const meses = [...mesesSet].sort();
+    const datasets = cuentasConActu.map((c, i) => ({
+      label: c.destino,
+      data: meses.map(m => {
+        const snap = c.snapshots.find(s => s.kind === 'actu' && (s.fecha||'').slice(0,7) === m);
+        return snap ? snap.rendimiento : 0;
+      }),
+      backgroundColor: palette[i % palette.length],
+      borderRadius: 6
+    }));
+    const ctxr = document.getElementById('chInvRend').getContext('2d');
+    charts.chInvRend = new Chart(ctxr, {
+      type: 'bar',
+      data: { labels: meses.map(m => mesLabel(m)), datasets },
+      options: {
+        ...CHART_DEFAULT,
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { ...CHART_DEFAULT.plugins, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmtARS(ctx.raw) } } }
+      }
+    });
+  }
+}
+
+/* =================================================================== */
+/* ANALISIS RESUMEN TARJETA                                             */
+/* =================================================================== */
+function renderAnalisisResumen() {
+  const wrap = document.getElementById('analisis-resumen');
+  // Encontrar el último mes de resumen con datos
+  const meses = [...new Set(DB.consumos_tarjeta.map(c => c.mes_resumen).filter(Boolean))].sort();
+  if (!meses.length) { wrap.innerHTML = '<div class="empty">Cargá un resumen para ver el análisis.</div>'; return; }
+  const m = meses[meses.length-1];
+  const arr = DB.consumos_tarjeta.filter(c => c.mes_resumen === m);
+  const total = arr.reduce((a,b) => a + b.monto, 0);
+  const obj = DB.config.objetivo_tarjeta || 1000000;
+  const exc = total - obj;
+
+  // Top categorías
+  const byCat = {};
+  arr.forEach(c => { byCat[c.categoria] = (byCat[c.categoria]||0) + c.monto; });
+  const topCat = Object.entries(byCat).sort((a,b) => b[1]-a[1]).slice(0,5);
+
+  // Top comercios
+  const byCom = {};
+  arr.forEach(c => { byCom[c.comercio] = (byCom[c.comercio]||0) + c.monto; });
+  const topCom = Object.entries(byCom).sort((a,b) => b[1]-a[1]).slice(0,5);
+
+  // Recortables
+  const recor = arr.filter(c => c.recortar).reduce((a,b) => a + b.monto, 0);
+
+  wrap.innerHTML = `
+    <div class="kpis" style="grid-template-columns: repeat(4, 1fr); margin-bottom:16px;">
+      <div class="kpi"><div class="lbl">Resumen ${mesLabel(m)}</div><div class="val num">${fmtARS(total)}</div><div class="hint">${arr.length} consumos</div></div>
+      <div class="kpi ${exc>0?'bad':'ok'}"><div class="lbl">Vs objetivo $1M</div><div class="val num">${fmtARS(exc)}</div><div class="hint">${exc>0?'Excedido':'Margen'}</div></div>
+      <div class="kpi warn"><div class="lbl">Marcados "revisar"</div><div class="val num">${fmtARS(recor)}</div><div class="hint">${arr.filter(c=>c.recortar).length} ítems</div></div>
+      <div class="kpi"><div class="lbl">Si recorto los marcados</div><div class="val num">${fmtARS(total - recor)}</div><div class="hint">${total-recor < obj ? '✓ Llegás a meta' : 'Aún excede'}</div></div>
+    </div>
+    <div class="grid-2">
+      <div>
+        <h4 style="font-size:13px;color:var(--txt-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Top categorías</h4>
+        <table>${topCat.map(([c,v]) => `<tr><td>${c}</td><td class="num">${fmtARS(v)}</td><td class="num" style="color:var(--txt-3)">${fmtPct(v/total)}</td></tr>`).join('')}</table>
+      </div>
+      <div>
+        <h4 style="font-size:13px;color:var(--txt-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Top comercios</h4>
+        <table>${topCom.map(([c,v]) => `<tr><td>${c}</td><td class="num">${fmtARS(v)}</td><td class="num" style="color:var(--txt-3)">${fmtPct(v/total)}</td></tr>`).join('')}</table>
+      </div>
+    </div>
+  `;
+}
+
+/* =================================================================== */
+/* ACTIONS                                                              */
+/* =================================================================== */
+function addIngreso() {
+  const fecha = document.getElementById('ing-fecha').value;
+  const origen = document.getElementById('ing-origen').value.trim();
+  const monto = parseFloat(document.getElementById('ing-monto').value);
+  if (!fecha || !origen || !monto) { alert('Completá fecha, origen y monto'); return; }
+  DB.ingresos.push({
+    id: uid('ing'), fecha, origen, monto,
+    estado: document.getElementById('ing-estado').value,
+    notas: document.getElementById('ing-notas').value, mes: fecha.slice(0,7)
+  });
+  saveDB();
+  ['ing-origen','ing-monto','ing-notas'].forEach(id => document.getElementById(id).value = '');
+  renderAll();
+}
+function deleteIngreso(id) { if (!confirm('¿Eliminar?')) return; DB.ingresos = DB.ingresos.filter(x => x.id !== id); saveDB(); renderAll(); }
+function toggleEstadoIngreso(id) { const x = DB.ingresos.find(i=>i.id===id); if(x){x.estado = x.estado==='Real'?'Proyectado':'Real';} saveDB(); renderAll(); }
+
+let editGastoId = null;
+
+function addGasto() {
+  const fecha = document.getElementById('gas-fecha').value;
+  const monto = parseFloat(document.getElementById('gas-monto').value);
+  if (!fecha || !monto) { alert('Fecha y monto requeridos'); return; }
+
+  if (editGastoId) {
+    // MODO EDICIÓN: actualizar gasto existente
+    const g = DB.gastos.find(x => x.id === editGastoId);
+    if (g) {
+      g.fecha = fecha;
+      g.categoria = document.getElementById('gas-categoria').value;
+      g.descripcion = document.getElementById('gas-descripcion').value;
+      g.monto = monto;
+      g.medio = document.getElementById('gas-medio').value;
+      g.tipo = document.getElementById('gas-tipo').value;
+      g.estado = document.getElementById('gas-estado').value;
+      g.notas = document.getElementById('gas-notas').value;
+      g.mes = fecha.slice(0,7);
+    }
+    saveDB();
+    cancelEditGasto();
+    renderAll();
+    return;
+  }
+
+  // MODO ALTA
+  DB.gastos.push({
+    id: uid('gas'), fecha,
+    categoria: document.getElementById('gas-categoria').value,
+    descripcion: document.getElementById('gas-descripcion').value,
+    monto,
+    medio: document.getElementById('gas-medio').value,
+    tipo: document.getElementById('gas-tipo').value,
+    estado: document.getElementById('gas-estado').value,
+    notas: document.getElementById('gas-notas').value,
+    mes: fecha.slice(0,7)
+  });
+  saveDB();
+  ['gas-descripcion','gas-monto','gas-notas'].forEach(id => document.getElementById(id).value = '');
+  renderAll();
+}
+
+function editGasto(id) {
+  const g = DB.gastos.find(x => x.id === id);
+  if (!g) return;
+  editGastoId = id;
+  document.getElementById('gas-fecha').value = g.fecha || '';
+  document.getElementById('gas-categoria').value = g.categoria || '';
+  document.getElementById('gas-descripcion').value = g.descripcion || '';
+  document.getElementById('gas-monto').value = g.monto;
+  document.getElementById('gas-medio').value = g.medio || 'Débito';
+  document.getElementById('gas-tipo').value = g.tipo || 'Personal';
+  document.getElementById('gas-estado').value = g.estado || 'Real';
+  document.getElementById('gas-notas').value = g.notas || '';
+  document.getElementById('gas-btn-save').textContent = 'Guardar cambios';
+  document.getElementById('gas-btn-cancel').style.display = '';
+  // Scroll al formulario
+  document.getElementById('gas-fecha').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function cancelEditGasto() {
+  editGastoId = null;
+  ['gas-descripcion','gas-monto','gas-notas'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('gas-btn-save').textContent = 'Agregar gasto';
+  document.getElementById('gas-btn-cancel').style.display = 'none';
+}
+
+function deleteGasto(id) {
+  if (!confirm('¿Eliminar?')) return;
+  if (editGastoId === id) cancelEditGasto();
+  DB.gastos = DB.gastos.filter(x => x.id !== id); saveDB(); renderAll();
+}
+function toggleEstadoGasto(id) { const x = DB.gastos.find(g=>g.id===id); if(x){x.estado = x.estado==='Real'?'Proyectado':'Real';} saveDB(); renderAll(); }
+
+function addConsumo() {
+  const fecha = document.getElementById('tar-fecha').value;
+  const monto = parseFloat(document.getElementById('tar-monto').value);
+  const mesRes = document.getElementById('tar-mes-res').value;
+  if (!fecha || !monto || !mesRes) { alert('Fecha, monto y mes resumen requeridos'); return; }
+  DB.consumos_tarjeta.push({
+    id: uid('tar'), fecha,
+    comercio: document.getElementById('tar-comercio').value,
+    categoria: document.getElementById('tar-categoria').value,
+    monto,
+    nota: document.getElementById('tar-nota').value,
+    tipo: document.getElementById('tar-tipo').value,
+    origen: 'Carga manual',
+    mes_consumo: fecha.slice(0,7),
+    recortar: document.getElementById('tar-recortar').value === 'true',
+    mes_resumen: mesRes
+  });
+  saveDB();
+  ['tar-comercio','tar-monto','tar-nota'].forEach(id => document.getElementById(id).value = '');
+  renderAll();
+}
+function deleteConsumo(id) { if (!confirm('¿Eliminar?')) return; DB.consumos_tarjeta = DB.consumos_tarjeta.filter(x => x.id !== id); saveDB(); renderAll(); }
+function toggleRecortar(id) { const x = DB.consumos_tarjeta.find(c=>c.id===id); if(x) x.recortar = !x.recortar; saveDB(); renderAll(); }
+
+function addPagoTarjeta() {
+  const fecha = document.getElementById('pag-fecha').value;
+  const monto = parseFloat(document.getElementById('pag-monto').value);
+  if (!fecha || !monto) { alert('Fecha y monto requeridos'); return; }
+  DB.pagos_tarjeta.push({
+    id: uid('pag'), fecha,
+    resumen: document.getElementById('pag-resumen').value,
+    tarjeta: document.getElementById('pag-tarjeta').value,
+    monto,
+    estado: document.getElementById('pag-estado').value,
+    notas: '', mes: fecha.slice(0,7)
+  });
+  saveDB();
+  ['pag-resumen','pag-monto'].forEach(id => document.getElementById(id).value = '');
+  renderAll();
+}
+function deletePagoTarj(id) { if (!confirm('¿Eliminar?')) return; DB.pagos_tarjeta = DB.pagos_tarjeta.filter(x => x.id !== id); saveDB(); renderAll(); }
+
+function onInvTipoChange() {
+  const tipo = document.getElementById('inv-tipo').value;
+  const destino = document.getElementById('inv-destino').value.trim();
+  const hint = document.getElementById('inv-tipo-hint');
+  if (!hint) return;
+  if (tipo === 'actualizacion') {
+    let txt = '<strong>Actualización:</strong> ingresá el saldo total de la cuenta a la fecha. Calcula automáticamente el rendimiento del período.';
+    if (destino) {
+      const cuenta = invByCuenta().find(c => c.destino === destino);
+      if (cuenta) {
+        txt += `<br>Saldo actual de "${destino}": <strong>${fmtARS(cuenta.saldoActual)}</strong>`;
+        if (cuenta.ultimaActuFecha) txt += ` (última actualización: ${cuenta.ultimaActuFecha})`;
+      }
+    }
+    hint.innerHTML = txt;
+  } else if (tipo === 'aporte') {
+    hint.innerHTML = '<strong>Aporte:</strong> agregás plata a la cuenta de inversión.';
+  } else {
+    hint.innerHTML = '<strong>Desarme:</strong> sacás plata de la cuenta de inversión hacia tu caja.';
+  }
+}
+
+function addInversion() {
+  const fecha = document.getElementById('inv-fecha').value;
+  const monto = parseFloat(document.getElementById('inv-monto').value);
+  const destino = document.getElementById('inv-destino').value.trim();
+  const tipo = document.getElementById('inv-tipo').value;
+  if (!fecha || !monto || !destino) { alert('Fecha, destino y monto requeridos'); return; }
+
+  // Si es actualización, mostrar preview del rendimiento calculado
+  if (tipo === 'actualizacion') {
+    const cuenta = invByCuenta().find(c => c.destino === destino);
+    if (cuenta) {
+      // Calcular qué pasaría: aportes desde la última actualización
+      let aportesDesdeUltActu = 0;
+      let saldoBase = 0;
+      if (cuenta.ultimaActuFecha) {
+        cuenta.movs.forEach(m => {
+          if (m.fecha > cuenta.ultimaActuFecha && m.fecha <= fecha) {
+            const arsEq = invToARS(m);
+            if (m.tipo === 'aporte') aportesDesdeUltActu += arsEq;
+            if (m.tipo === 'desarme') aportesDesdeUltActu -= arsEq;
+          }
+        });
+        // saldoBase = saldo de última actualización
+        const lastActu = [...cuenta.snapshots].reverse().find(s => s.kind === 'actu');
+        saldoBase = lastActu ? lastActu.saldo : 0;
+      } else {
+        // primera actualización: aportes netos hasta esta fecha
+        cuenta.movs.forEach(m => {
+          if (m.fecha <= fecha && m.tipo !== 'actualizacion') {
+            const arsEq = invToARS(m);
+            saldoBase += (m.tipo === 'aporte' ? 1 : -1) * arsEq;
+          }
+        });
+      }
+      const arsNuevo = document.getElementById('inv-moneda').value === 'USD' ? monto * (DB.config.tc_usd || 1) : monto;
+      const rend = arsNuevo - saldoBase - aportesDesdeUltActu;
+      const baseRet = saldoBase + aportesDesdeUltActu;
+      const tasa = baseRet > 0 ? rend / baseRet : 0;
+      const msg = `Confirmar actualización:\n\n` +
+        `Cuenta: ${destino}\n` +
+        `Saldo nuevo: ${fmtARS(arsNuevo)}\n` +
+        `Saldo previo: ${fmtARS(saldoBase)}\n` +
+        `Aportes netos del período: ${fmtARS(aportesDesdeUltActu)}\n` +
+        `Rendimiento calculado: ${fmtARS(rend)} (${(tasa*100).toFixed(2)}%)\n\n` +
+        `¿Continuar?`;
+      if (!confirm(msg)) return;
+    }
+  }
+
+  DB.inversiones.push({
+    id: uid('inv'), fecha, destino, monto,
+    moneda: document.getElementById('inv-moneda').value,
+    tc: DB.config.tc_usd || 1,
+    tipo,
+    mes: fecha.slice(0,7), notas: ''
+  });
+  saveDB();
+  ['inv-destino','inv-monto'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('inv-tipo-hint').innerHTML = '';
+  renderAll();
+}
+function deleteInversion(id) { if (!confirm('¿Eliminar?')) return; DB.inversiones = DB.inversiones.filter(x => x.id !== id); saveDB(); renderAll(); }
+
+function saveConfig() {
+  DB.config.saldo_inicial = parseFloat(document.getElementById('cfg-saldo').value) || 0;
+  DB.config.objetivo_tarjeta = parseFloat(document.getElementById('cfg-objtar').value) || 0;
+  DB.config.alerta_tarjeta = parseFloat(document.getElementById('cfg-alerta').value) || 0.85;
+  DB.config.tc_usd = parseFloat(document.getElementById('cfg-tc').value) || 1;
+  saveDB();
+  renderAll();
+  alert('Guardado.');
+}
+function saveCategorias() {
+  document.querySelectorAll('#cfgCatGrid input[data-cat]').forEach(inp => {
+    DB.config.objetivos_categoria[inp.dataset.cat] = parseFloat(inp.value) || 0;
+  });
+  saveDB();
+  renderAll();
+  alert('Objetivos guardados.');
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(DB, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'maxi_dashboard_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+function importData(ev) {
+  const f = ev.target.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const obj = JSON.parse(e.target.result);
+      if (!obj.config || !Array.isArray(obj.gastos)) { alert('Formato inválido'); return; }
+      if (!confirm('¿Reemplazar todos los datos actuales?')) return;
+      DB = obj; saveDB(); renderAll();
+    } catch (err) { alert('Error: ' + err.message); }
+  };
+  reader.readAsText(f);
+}
+function resetAll() {
+  if (!confirm('Esto borra todos los datos. ¿Seguro?')) return;
+  if (!confirm('Última oportunidad. ¿De verdad?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  DB = JSON.parse(JSON.stringify(SEED));
+  saveDB();
+  renderAll();
+}
+
+/* =================================================================== */
+/* IMPORTAR RESUMEN PEGADO                                              */
+/* =================================================================== */
+function categorizarComercio(c) {
+  const s = (c||'').toUpperCase();
+  if (/MERPAGO|MERCADO ?PAGO|MERPAGOMP/.test(s)) return 'MercadoPago';
+  if (/CINEPOLIS|HOYTS|SHOWCASE|CINE/.test(s)) return 'Comidas / ocio';
+  if (/BURGUER|MCDONALDS|STARBUCK|RESTAURAN|CAFE|HELADO|BAKEHOUSE|YPF.*KIOSCO/.test(s)) return 'Comidas / ocio';
+  if (/AXION|YPF|SHELL|PUMA|GULF/.test(s)) return 'Nafta';
+  if (/AUTOPISTA|AUTOVIA|PEAJE|CAMINO/.test(s)) return 'Peajes';
+  if (/CHANGOMAS|JUMBO|COTO|DIA|CARREFOUR|VEA|AUTOSERVICIO/.test(s)) return 'Super / hogar';
+  if (/NETFLIX|SPOTIFY|PRIMEVIDEO|YOUTUBEP|APPLE/.test(s)) return 'Suscripciones';
+  if (/CLAUDE|OPENAI|CHATGPT|RENDER|INOLYZER|GITHUB|NOTION/.test(s)) return 'Software / apps';
+  if (/CLARO|MOVISTAR|PERSONAL|EDESUR|EDENOR|TELECENTRO|FIBERTEL|CABLEVISION|VERISURE/.test(s)) return 'Servicios';
+  if (/MERCADOLIBRE|SHOP|TIENDA/.test(s)) return 'Compras online';
+  if (/DMPETS|VETERIN|MASCOT/.test(s)) return 'Mascotas';
+  if (/ZURICH|GALENO|MEDIFE|OSDE|SWISS|RETIRO/.test(s)) return 'Seguro';
+  return 'Otros';
+}
+
+function importarResumen() {
+  const txt = document.getElementById('imp-textarea').value.trim();
+  const mesRes = document.getElementById('imp-mes-res').value;
+  const tipoDef = document.getElementById('imp-tipo').value;
+  if (!txt || !mesRes) { alert('Pegá filas y elegí mes resumen.'); return; }
+
+  const lines = txt.split(/\r?\n/).filter(l => l.trim());
+  let added = 0, errors = [];
+  lines.forEach((line, idx) => {
+    const parts = line.split(/\t|,(?![^"]*")/).map(p => p.trim().replace(/^"|"$/g,''));
+    if (parts.length < 3) { errors.push(`L${idx+1}: faltan columnas`); return; }
+    let [fechaStr, comercio, montoStr, categoria] = parts;
+    // fecha: dd/mm o dd/mm/yyyy
+    let fecha = null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) fecha = fechaStr;
+    else {
+      const m = fechaStr.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?$/);
+      if (m) {
+        const yy = m[3] || mesRes.slice(0,4);
+        const yyyy = yy.length === 2 ? '20' + yy : yy;
+        fecha = `${yyyy}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+      }
+    }
+    if (!fecha) { errors.push(`L${idx+1}: fecha "${fechaStr}" no válida`); return; }
+    const monto = parseFloat(montoStr.replace(/[\.\s]/g,'').replace(',','.')) || parseFloat(montoStr);
+    if (!monto) { errors.push(`L${idx+1}: monto no válido`); return; }
+    const cat = categoria || categorizarComercio(comercio);
+    DB.consumos_tarjeta.push({
+      id: uid('tar'), fecha, comercio, categoria: cat, monto,
+      nota: '', tipo: tipoDef, origen: 'Resumen importado ' + mesRes,
+      mes_consumo: fecha.slice(0,7), recortar: false, mes_resumen: mesRes
+    });
+    added++;
+  });
+  saveDB();
+  document.getElementById('imp-result').innerHTML = `
+    <div class="traffic ${added>0?'ok':'bad'}"><span class="dot"></span>${added} consumos agregados</div>
+    ${errors.length ? '<div style="margin-top:8px;color:var(--bad);font-size:12px;">'+errors.join('<br>')+'</div>' : ''}
+  `;
+  if (added) document.getElementById('imp-textarea').value = '';
+  renderAll();
+}
+
+/* =================================================================== */
+/* IMPORTAR PDF VISA GALICIA                                            */
+/* =================================================================== */
+let pdfPreviewItems = [];
+
+async function leerPdfTarjeta(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const status = document.getElementById('imp-pdf-status');
+  status.innerHTML = '<span style="color:var(--warn)">Leyendo PDF...</span>';
+  try {
+    if (!window.pdfjsLib) { status.innerHTML = '<span style="color:var(--bad)">pdf.js no disponible (revisá conexión a internet)</span>'; return; }
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    let fullText = '';
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const tc = await page.getTextContent();
+      // Reconstruir línea por línea usando la coordenada Y de cada item
+      const lines = {};
+      tc.items.forEach(it => {
+        if (!it.str || !it.str.trim()) return;
+        const y = Math.round(it.transform[5]);
+        if (!lines[y]) lines[y] = [];
+        lines[y].push({ x: it.transform[4], str: it.str });
+      });
+      const ys = Object.keys(lines).map(Number).sort((a,b) => b - a); // de arriba a abajo
+      ys.forEach(y => {
+        const sorted = lines[y].sort((a,b) => a.x - b.x);
+        fullText += sorted.map(s => s.str).join(' ') + '\n';
+      });
+    }
+    parsearTextoVisa(fullText, file.name);
+  } catch (err) {
+    console.error(err);
+    status.innerHTML = '<span style="color:var(--bad)">Error: ' + err.message + '</span>';
+  }
+}
+
+function parsearTextoVisa(fullText, nombreArchivo) {
+  // Aislar el bloque "DETALLE DEL CONSUMO" (puede aparecer varias veces, una por página)
+  // Termina en "Total Consumos" o "TARJETA xxxx Total"
+  const items = [];
+  const lines = fullText.split('\n');
+  let inDetalle = false;
+  // Regex de fila: dd-mm-yy [K|*] referencia [cuota] [comprobante] monto
+  // Estrategia: cualquier línea que arranque con dd-mm-yy
+  const FILA_RE = /^\s*(\d{2}-\d{2}-\d{2})\s+(.+?)\s+([\d.,]+)\s*$/;
+  const STOP_RE = /Total Consumos|IMPUESTO DE SELLOS|INTERESES FINANCIACION|TOTAL A PAGAR|DB IVA|IIBB PERCEP|IVA RG|DB\.RG/i;
+  const START_RE = /DETALLE DEL CONSUMO/i;
+
+  for (const line of lines) {
+    if (START_RE.test(line)) { inDetalle = true; continue; }
+    if (!inDetalle) continue;
+    if (STOP_RE.test(line)) { inDetalle = false; continue; }
+    const m = FILA_RE.exec(line.trim());
+    if (!m) continue;
+    let [, fechaStr, middle, montoStr] = m;
+    // Normalizar fecha dd-mm-yy → yyyy-mm-dd
+    const [dd, mm, yy] = fechaStr.split('-');
+    const yyyy = '20' + yy;
+    const fecha = `${yyyy}-${mm}-${dd}`;
+    // Detectar si es USD (línea contiene "USD <num>" antes del monto final, y el monto final ≈ ese USD)
+    const usdMatch = /USD\s*([\d.,]+)/i.exec(middle);
+    let isUSD = false, montoUSD = 0;
+    const monto = parseMontoARG(montoStr);
+    if (usdMatch) {
+      const valUSD = parseMontoARG(usdMatch[1]);
+      if (Math.abs(valUSD - monto) < 0.01) {
+        isUSD = true;
+        montoUSD = valUSD;
+      }
+    }
+    // Limpiar referencia: quitar prefijo K/* y cuotas xx/yy y comprobantes numéricos largos
+    let referencia = middle
+      .replace(/^[K\*]\s+/, '')
+      .replace(/\s+\d{2}\/\d{2}\s+/, ' ')
+      .replace(/\s+\d{6,}\s*$/, '')
+      .replace(/USD\s*[\d.,]+/i, '')
+      .replace(/in1[A-Za-z0-9]+/g, '')
+      .replace(/[A-Z]{3}\d+[A-Z]+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!referencia || referencia.length < 2) continue;
+
+    items.push({
+      fecha,
+      comercio: referencia,
+      monto_orig: monto,
+      moneda: isUSD ? 'USD' : 'ARS',
+      monto_ars: isUSD ? monto * (parseFloat(document.getElementById('imp-tc').value) || DB.config.tc_usd || 1420) : monto,
+      categoria: categorizarComercio(referencia),
+      include: true
+    });
+  }
+
+  pdfPreviewItems = items;
+  const status = document.getElementById('imp-pdf-status');
+  status.innerHTML = `<span style="color:var(--ok)">✓ ${items.length} consumos detectados en ${nombreArchivo}</span>`;
+  renderPdfPreview();
+}
+
+function parseMontoARG(s) {
+  if (!s) return 0;
+  // 1.234,56 → 1234.56 ; 1234,56 → 1234.56 ; 1234.56 → ???
+  // Heurística: si tiene coma, la coma es decimal y los puntos son miles
+  if (s.includes(',')) {
+    return parseFloat(s.replace(/\./g, '').replace(',', '.'));
+  }
+  // sin coma, el punto puede ser decimal o miles. Si hay 3 dígitos después del último punto → miles
+  const lastDot = s.lastIndexOf('.');
+  if (lastDot >= 0 && s.length - lastDot - 1 === 3) {
+    return parseFloat(s.replace(/\./g, ''));
+  }
+  return parseFloat(s);
+}
+
+function renderPdfPreview() {
+  const wrap = document.getElementById('imp-preview');
+  if (!pdfPreviewItems.length) { wrap.innerHTML = ''; return; }
+  const cats = Object.keys(DB.config.objetivos_categoria || {}).sort();
+  const total = pdfPreviewItems.filter(i => i.include).reduce((s,i) => s + i.monto_ars, 0);
+  const obj = DB.config.objetivo_tarjeta || 1000000;
+  const exc = total - obj;
+  wrap.innerHTML = `
+    <div class="card" style="background: var(--bg-3); margin-top: 14px;">
+      <h3>Preview · ${pdfPreviewItems.length} consumos detectados</h3>
+      <div class="row-flex" style="margin-bottom: 12px;">
+        <div><strong>Total ${fmtARS(total)}</strong> <span style="color:var(--txt-2);">vs objetivo ${fmtARS(obj)}</span> <span class="traffic ${exc>0?'bad':'ok'}"><span class="dot"></span>${exc>0?'Excedido':'En meta'} ${fmtARS(Math.abs(exc))}</span></div>
+        <div class="spacer"></div>
+        <button class="btn ghost sm" onclick="pdfToggleAll(true)">Marcar todos</button>
+        <button class="btn ghost sm" onclick="pdfToggleAll(false)">Desmarcar todos</button>
+        <button class="btn" onclick="confirmarImportPdf()">Confirmar e importar seleccionados</button>
+      </div>
+      <table>
+        <thead><tr><th>✓</th><th>Fecha</th><th>Comercio</th><th>Categoría</th><th>Tipo</th><th class="num">Monto orig.</th><th class="num">ARS eq.</th></tr></thead>
+        <tbody>
+          ${pdfPreviewItems.map((it, i) => `
+            <tr>
+              <td><input type="checkbox" ${it.include?'checked':''} onchange="pdfPreviewItems[${i}].include=this.checked; renderPdfPreview()"></td>
+              <td class="num">${it.fecha}</td>
+              <td>${it.comercio}</td>
+              <td>
+                <select onchange="pdfPreviewItems[${i}].categoria=this.value" style="background:var(--bg-2); color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:4px 6px; font-size: 12px;">
+                  ${cats.map(c => `<option ${c===it.categoria?'selected':''}>${c}</option>`).join('')}
+                </select>
+              </td>
+              <td>
+                <select onchange="pdfPreviewItems[${i}].tipo_user=this.value" style="background:var(--bg-2); color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:4px 6px; font-size: 12px;">
+                  <option value="Personal" ${(it.tipo_user||'Personal')==='Personal'?'selected':''}>Personal</option>
+                  <option value="Negocio" ${(it.tipo_user||'')==='Negocio'?'selected':''}>Negocio</option>
+                </select>
+              </td>
+              <td class="num">${it.moneda} ${fmtCompact(it.monto_orig)}</td>
+              <td class="num">${fmtARS(it.monto_ars)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function pdfToggleAll(v) { pdfPreviewItems.forEach(i => i.include = v); renderPdfPreview(); }
+
+function confirmarImportPdf() {
+  const mesRes = document.getElementById('imp-mes-res').value;
+  if (!mesRes) { alert('Falta el mes del resumen'); return; }
+  const tipoDef = document.getElementById('imp-tipo').value;
+  let added = 0;
+  pdfPreviewItems.filter(i => i.include).forEach(it => {
+    DB.consumos_tarjeta.push({
+      id: uid('tar'),
+      fecha: it.fecha,
+      comercio: it.comercio,
+      categoria: it.categoria,
+      monto: it.monto_ars,
+      nota: it.moneda === 'USD' ? `USD ${it.monto_orig} @ ${(it.monto_ars/it.monto_orig).toFixed(0)}` : '',
+      tipo: it.tipo_user || tipoDef,
+      origen: 'PDF Visa ' + mesRes,
+      mes_consumo: it.fecha.slice(0,7),
+      recortar: false,
+      mes_resumen: mesRes
+    });
+    added++;
+  });
+  saveDB();
+  pdfPreviewItems = [];
+  document.getElementById('imp-pdf-status').innerHTML = `<span style="color:var(--ok)">✓ ${added} consumos importados</span>`;
+  document.getElementById('imp-preview').innerHTML = '';
+  document.getElementById('imp-pdf').value = '';
+  renderAll();
+}
+
+/* =================================================================== */
+/* NAVIGATION                                                           */
+/* =================================================================== */
+document.querySelectorAll('#navTabs button').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('#navTabs button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + b.dataset.page).classList.add('active');
+    renderAll();
+  };
+});
+document.querySelectorAll('#tarSubtabs button').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('#tarSubtabs button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    ['consumo','pagos','importar'].forEach(s => document.getElementById('tar-'+s).classList.add('hidden'));
+    document.getElementById('tar-' + b.dataset.sub).classList.remove('hidden');
+    if (b.dataset.sub === 'importar') renderAnalisisResumen();
+  };
+});
+document.querySelectorAll('#invSubtabs button').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('#invSubtabs button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    ['movimiento','cuentas','historial'].forEach(s => document.getElementById('inv-'+s).classList.add('hidden'));
+    document.getElementById('inv-' + b.dataset.sub).classList.remove('hidden');
+    if (b.dataset.sub === 'cuentas') renderInvCharts();
+  };
+});
+
+/* =================================================================== */
+/* INITIAL                                                              */
+/* =================================================================== */
+function renderAll() {
+  fillCategoriaSelectors();
+  fillMesSelectors();
+  renderMesPills();
+  // Dashboard
+  if (document.getElementById('page-dashboard').classList.contains('active')) {
+    renderKPIs();
+    renderTblCategorias();
+    renderCharts();
+  }
+  // Ingresos
+  if (document.getElementById('page-ingresos').classList.contains('active')) renderTblIngresos();
+  // Gastos
+  if (document.getElementById('page-gastos').classList.contains('active')) renderGastos();
+  // Tarjeta
+  if (document.getElementById('page-tarjeta').classList.contains('active')) {
+    renderConsumos();
+    renderPagosTarjeta();
+    renderAnalisisResumen();
+  }
+  // Inversiones
+  if (document.getElementById('page-inversiones').classList.contains('active')) {
+    renderInversiones();
+    renderInvCharts();
+  }
+  // Proyección
+  if (document.getElementById('page-proyeccion').classList.contains('active')) {
+    renderProyeccionPage();
+    renderResumenMensual();
+  }
+  // Config
+  if (document.getElementById('page-config').classList.contains('active')) renderConfig();
+}
+
+// Set defaults
+(function init() {
+  // Asegurar config.fecha_inicio
+  if (!DB.config.fecha_inicio) DB.config.fecha_inicio = '2026-04-01';
+  saveDB();
+  // Hoy en los date inputs
+  const today = new Date().toISOString().slice(0,10);
+  ['ing-fecha','gas-fecha','tar-fecha','pag-fecha','inv-fecha'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = today;
+  });
+  document.getElementById('tar-mes-res').value = today.slice(0,7);
+  document.getElementById('imp-mes-res').value = today.slice(0,7);
+  document.getElementById('imp-tc').value = DB.config.tc_usd || 1420;
+  onInvTipoChange();
+  renderAll();
+})();
+</script>
+</body>
+</html>
