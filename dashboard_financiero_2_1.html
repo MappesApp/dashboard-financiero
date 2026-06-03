@@ -772,7 +772,7 @@ function renderKPIs() {
   wrap.innerHTML = `
     <div class="kpi accent"><div class="lbl">Caja final escenario 120d</div><div class="val num">${fmtARS(finalEsc)}</div><div class="hint">Saldo proyectado al cierre del horizonte</div></div>
     <div class="kpi"><div class="lbl">Ingresos mes (real)</div><div class="val num">${fmtARS(cur.ingresos_real)}</div><div class="hint">Solo cobrado</div></div>
-    <div class="kpi"><div class="lbl">Egresos caja mes</div><div class="val num">${fmtARS(cur.egresos_caja_real)}</div><div class="hint">Directos + pago tarjeta</div></div>
+    <div class="kpi"><div class="lbl">Egresos caja mes</div><div class="val num">${fmtARS(cur.egresos_caja_total)}</div><div class="hint">Real + proyectado + tarjeta</div></div>
     <div class="kpi ${cur.resultado_real >= 0 ? 'ok' : 'bad'}"><div class="lbl">Resultado mes</div><div class="val num">${fmtARS(cur.resultado_real)}</div><div class="hint">Ingresos − egresos</div></div>
     <div class="kpi ${semClass}"><div class="lbl">Tarjeta vs meta $1M</div><div class="val num">${fmtARS(cur.consumo_tarjeta)}</div><div class="hint">${semaforoTxt} · ${fmtPct(usoTar)}</div></div>
   `;
